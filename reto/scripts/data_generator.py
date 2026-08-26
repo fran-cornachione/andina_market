@@ -49,7 +49,7 @@ from faker import Faker
 # ---------------------------------------------------------------------------
 # Configuracion general
 # ---------------------------------------------------------------------------
-OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output" / "csv"
+OUTPUT_DIR = "/Volumes/andina_source/landing/files"
 
 N_CUSTOMERS = 600
 N_PRODUCTS = 180
@@ -428,7 +428,6 @@ def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
 # Escritura de CSVs (Polars)
 # ---------------------------------------------------------------------------
 def write_csv(rows: list[dict], filename: str, drop_cols: list[str] | None = None) -> Path:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     clean_rows = rows
     if drop_cols:
         clean_rows = [{k: v for k, v in r.items() if k not in drop_cols} for r in rows]

@@ -1,20 +1,16 @@
-# The main pipeline for andina_market
-
-resources:
-  pipelines:
-    andina_market_etl:
-      name: andina_market_etl
-      catalog: ${var.catalog}
-      schema: ${var.schema}
-      serverless: true
-      root_path: "../src/andina_market_etl"
-
-      libraries:
-        - glob:
-            include: ../src/andina_market_etl/transformations/**
-
-      environment:
-        dependencies:
-          # We include every dependency defined by pyproject.toml by defining an editable environment
-          # that points to the folder where pyproject.toml is deployed.
-          - --editable ${workspace.file_path}
+id: ca6a4a56-57f9-47a9-adc1-c509e249719c
+pipeline_type: WORKSPACE
+name: andina_market_etl
+libraries:
+  - glob:
+      include: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market
+        (bundle)/src/andina_market_etl/transformations/**
+schema: default
+continuous: false
+development: false
+photon: true
+channel: CURRENT
+catalog: andina_market
+serverless: true
+root_path: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market
+  (bundle)/src/andina_market_etl
