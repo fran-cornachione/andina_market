@@ -1,4 +1,4 @@
--- Deduped: CTE con deduplicación
+-- Deduped: CTE para deduplicar
 -- Cleaned: CTE que selecciona de Deduped y limpia los datos
 
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.customers AS
@@ -9,7 +9,7 @@ WITH deduped AS (
             PARTITION BY CustomerID -- Deduplicación por 
             ORDER BY _ingested_at DESC -- Orden por tiempo de ingesta
         ) AS row_num
-    FROM customers
+    FROM andina_market.bronze.customers
     WHERE CustomerID IS NOT NULL -- Filtrar por CustomerID no nulo
 ),
 cleaned AS (
@@ -56,7 +56,7 @@ WITH deduped AS (
             PARTITION BY ProductID
             ORDER BY _ingested_at DESC
         ) AS row_num
-    FROM products
+    FROM andina_market.bronze.products
     WHERE ProductID IS NOT NULL
 ),
 cleaned AS (
@@ -79,12 +79,12 @@ cleaned AS (
         UpdatedAt,
         _ingested_at,
         CURRENT_TIMESTAMP() AS _processed_at
-    FROM deduped -- Selecciona de la tabla deduplicada
+    FROM deduped 
     WHERE row_num = 1
 )
 SELECT * FROM cleaned;
 
-
+-- Orders
 
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.orders AS
 WITH deduped AS (
@@ -107,7 +107,7 @@ cleaned AS (
             WHEN UPPER(TRIM(REPLACE(o.Channel, '_', ' '))) = 'APP' THEN 'App'
             WHEN UPPER(TRIM(REPLACE(o.Channel, '_', ' '))) IN ('TIENDA', 'TIENDA FISICA') THEN 'Tienda'
             ELSE NULL
-        END                                                      AS Channel,
+        END AS Channel,
         CASE
             WHEN UPPER(TRIM(o.Status)) = 'PENDING'    THEN 'Pending'
             WHEN UPPER(TRIM(o.Status)) = 'COMPLETED'  THEN 'Completed'
@@ -171,7 +171,7 @@ INNER JOIN andina_market.silver.orders ord ON c.OrderID = ord.OrderID
 INNER JOIN andina_market.silver.products prod ON c.ProductID = prod.ProductID
 WHERE c.Quantity > 0;
 
-
+-- Payments
 
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.payments AS
 WITH deduped AS (
@@ -225,7 +225,7 @@ FROM cleaned c
 INNER JOIN andina_market.silver.orders ord
     ON c.OrderID = ord.OrderID;
 
-
+-- Support Tickets
 
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.support_tickets AS
 WITH deduped AS (

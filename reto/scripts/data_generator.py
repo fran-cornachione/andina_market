@@ -1,36 +1,7 @@
 """
 data_generator.py
 ==================
-Genera datos sinteticos "sucios" (con errores realistas) para Andina Market
-y opcionalmente los carga a Azure SQL Database.
-
-Que hace:
-    1. Genera las 6 tablas en memoria respetando relaciones logicas entre ellas
-       (Customers -> Orders -> OrderItems -> Payments, Customers -> SupportTickets),
-       inyectando errores de calidad de datos a proposito (ver 01_create_tables.sql
-       para el detalle de por que cada error existe).
-    2. Escribe cada tabla como CSV en seed-data/output/csv/ usando Polars.
-    3. (Opcional) Carga cada CSV a Azure SQL Database via pyodbc con
-       fast_executemany, en lotes.
-    4. Imprime un resumen de cuantos registros "sucios" se generaron por tipo
-       de error, util para documentar la seccion de calidad de datos del README.
-
-Requisitos:
-    pip install faker polars pyodbc python-dotenv
-    Driver ODBC 18 para SQL Server instalado en el sistema:
-    https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server
-
-Configuracion de conexion (crea un archivo .env junto a este script, NO lo subas
-al repo -- ya esta en .gitignore):
-    AZURE_SQL_SERVER=tu-servidor.database.windows.net
-    AZURE_SQL_DATABASE=tu-base
-    AZURE_SQL_USER=tu-usuario
-    AZURE_SQL_PASSWORD=tu-password
-
-Uso:
-    python data_generator.py                # genera CSVs y carga a Azure SQL
-    python data_generator.py --no-load       # solo genera CSVs, no carga nada
-    python data_generator.py --seed 123      # reproducible con otra semilla
+Genera datos sinteticos "sucios" (con errores realistas) para Andina Market.
 """
 
 from __future__ import annotations
@@ -49,7 +20,7 @@ from faker import Faker
 # ---------------------------------------------------------------------------
 # Configuracion general
 # ---------------------------------------------------------------------------
-OUTPUT_DIR = "/Volumes/andina_source/landing/files"
+OUTPUT_DIR = "/Volumes/andina_source/landing/files/csv"
 
 N_CUSTOMERS = 600
 N_PRODUCTS = 180
@@ -57,13 +28,13 @@ N_ORDERS = 2500
 N_SUPPORT_TICKETS = 350
 ITEMS_PER_ORDER_RANGE = (1, 5)
 
-# Probabilidades de errores realistas inyectados (documentados junto al DDL)
+# Probabilidades de errores realistas inyectados
 P_NULL_EMAIL = 0.05
 P_NULL_PHONE = 0.10
 P_NULL_COUNTRY = 0.04
 P_DUPLICATE_EMAIL = 0.04
-P_MESSY_CASE = 0.15            # variantes de casing/typos en campos categoricos libres
-P_ORPHAN_FK = 0.03              # referencia a una fila que no existe (posible por NOCHECK CONSTRAINT)
+P_MESSY_CASE = 0.15
+P_ORPHAN_FK = 0.03
 P_NEGATIVE_PRICE = 0.02
 P_NULL_PRICE = 0.02
 P_ZERO_OR_NEG_QTY = 0.03
@@ -78,7 +49,15 @@ COUNTRIES = {
     "Chile": ["Santiago", "Valparaiso", "Concepcion"],
     "Argentina": ["Buenos Aires", "Cordoba", "Rosario"],
 }
-# Variantes "sucias" del mismo pais real (codigo ISO, minusculas, espacios, etc.)
+
+COUNTRY_WEIGHTS = {
+    "Mexico": 0.30,
+    "Colombia": 0.25,
+    "Peru": 0.20,
+    "Argentina": 0.15,
+    "Chile": 0.10,
+}
+
 COUNTRY_DIRTY_VARIANTS = {
     "Peru": ["PE", "peru", "Peru "],
     "Colombia": ["CO", "colombia"],
@@ -88,9 +67,11 @@ COUNTRY_DIRTY_VARIANTS = {
 }
 
 SEGMENTS_CLEAN = ["Regular", "VIP", "Premium"]
+SEGMENTS_WEIGHTS = [0.65, 0.25, 0.10]
 SEGMENTS_DIRTY = ["regular", "vip", "PREMIUM", "Vip", "premium "]
 
 CHANNELS_CLEAN = ["Web", "App", "Tienda"]
+CHANNELS_WEIGHTS = [0.45, 0.32, 0.23]
 CHANNELS_DIRTY = ["web", "WEB", "app", "APP", "tienda", "TIENDA", "tienda_fisica"]
 
 ORDER_STATUS_CLEAN = ["Pending", "Completed", "Cancelled", "Shipped"]
@@ -122,6 +103,16 @@ CATEGORIES_DIRTY_MAP = {
     "Libros": ["libros", "LIBROS"],
 }
 
+REAL_PRODUCTS = {
+    "Electronica": ["Smartphone Galaxy S23", "Audífonos Bluetooth Noise Cancelling", "Smart TV 55 QLED", "Laptop Pro 16", "Cargador Carga Rápida 65W", "Consola de Videojuegos Pro", "Monitor Gamer 27 144Hz"],
+    "Hogar": ["Aspiradora Robot Wi-Fi", "Cafetera Espresso Automática", "Juego de Sartenes Antiadherentes", "Lámpara LED Inteligente", "Freidora de Aire 5L", "Edredón Plumas Matrimonial"],
+    "Moda": ["Chaqueta de Cuero Sintético", "Zapatillas Urbanas Classic", "Jeans Slim Fit", "Sudadera con Capucha", "Reloj Análogo Minimalista", "Gafas de Sol Polarizadas"],
+    "Deportes": ["Mat de Yoga Antideslizante", "Mancuernas Ajustables 20kg", "Botella Térmica 1L", "Bicicleta de Montaña R29", "Cinta de Correr Plegable"],
+    "Belleza": ["Sérum Facial Ácido Hialurónico", "Secador de Pelo Iónico", "Crema Hidratante Noche", "Kit de Maquillaje Profesional", "Perfume Eau de Parfum 100ml"],
+    "Juguetes": ["Set de Bloques para Construcción", "Juego de Mesa Estrategia", "Muñeca Articulada", "Coche a Control Remoto All-Road"],
+    "Libros": ["Hábitos Atómicos", "Cien Años de Soledad", "El Poder del Ahora", "Clean Code", "Sapiens: De animales a dioses"]
+}
+
 SUBJECT_TEMPLATES = [
     "Problema con mi pedido",
     "Consulta sobre devolucion",
@@ -131,7 +122,6 @@ SUBJECT_TEMPLATES = [
     "Producto no coincide con la descripcion",
 ]
 
-# Varios locales para diversidad de nombres latinoamericanos
 fake = Faker(["es_MX", "es_CO", "es_ES", "es_AR", "es_CL"])
 
 
@@ -153,12 +143,12 @@ def generate_customers(n: int) -> list[dict]:
     rows = []
     seen_emails: list[str] = []
     signup_start = datetime(2020, 1, 1)
-    signup_end = datetime(2026, 8, 1)
+    signup_end = datetime(2025, 12, 31)
 
     for i in range(1, n + 1):
         name = fake.name()
         if maybe(0.05):
-            name = f"  {name.upper()}  "  # espacios extra / mayusculas (error de captura)
+            name = f"  {name.upper()}  "
 
         if seen_emails and maybe(P_DUPLICATE_EMAIL):
             email = random.choice(seen_emails)
@@ -177,13 +167,16 @@ def generate_customers(n: int) -> list[dict]:
         ]
         phone = random.choice(phone_formats) if not maybe(P_NULL_PHONE) else None
 
-        country_clean = random.choice(list(COUNTRIES.keys()))
+        country_clean = random.choices(
+            list(COUNTRY_WEIGHTS.keys()), weights=list(COUNTRY_WEIGHTS.values()), k=1
+        )[0]
         city = random.choice(COUNTRIES[country_clean])
         country = dirty_or_clean(country_clean, COUNTRY_DIRTY_VARIANTS[country_clean], prob=0.12)
         if maybe(P_NULL_COUNTRY):
             country = None
 
-        segment = dirty_or_clean(random.choice(SEGMENTS_CLEAN), SEGMENTS_DIRTY)
+        segment_clean = random.choices(SEGMENTS_CLEAN, weights=SEGMENTS_WEIGHTS, k=1)[0]
+        segment = dirty_or_clean(segment_clean, SEGMENTS_DIRTY)
         if maybe(0.05):
             segment = None
 
@@ -203,6 +196,7 @@ def generate_customers(n: int) -> list[dict]:
                 "SignupDate": signup_date.date().isoformat(),
                 "CreatedAt": created_at.isoformat(sep=" "),
                 "UpdatedAt": updated_at.isoformat(sep=" ") if updated_at else None,
+                "_signup_dt": signup_date
             }
         )
     return rows
@@ -215,7 +209,9 @@ def generate_products(n: int) -> list[dict]:
     for i in range(1, n + 1):
         category = random.choice(CATEGORIES)
         category_val = dirty_or_clean(category, CATEGORIES_DIRTY_MAP[category])
-        name = f"{fake.word().capitalize()} {category} {fake.word().capitalize()}"
+        
+        base_name = random.choice(REAL_PRODUCTS[category])
+        name = f"{base_name} - Mod. {i:03d}" if maybe(0.2) else base_name
 
         sku_clean = f"SKU-{category[:3].upper()}-{i:05d}"
         sku = random.choice(skus_used) if skus_used and maybe(0.03) else sku_clean
@@ -249,18 +245,23 @@ def generate_products(n: int) -> list[dict]:
     return rows
 
 
-def generate_orders(n: int, customer_ids: list[int]) -> list[dict]:
+def generate_orders(n: int, customers: list[dict]) -> list[dict]:
     rows = []
+    customer_ids = [c["CustomerID"] for c in customers]
     max_customer_id = max(customer_ids)
+    customer_map = {c["CustomerID"]: c["_signup_dt"] for c in customers}
 
     for i in range(1, n + 1):
         if maybe(P_ORPHAN_FK):
-            customer_id = max_customer_id + random.randint(1, 500)  # no existe (huerfano intencional)
+            customer_id = max_customer_id + random.randint(1, 500)
+            signup_dt = datetime(2021, 1, 1)
         else:
             customer_id = random.choice(customer_ids)
+            signup_dt = customer_map[customer_id]
 
-        order_date = fake.date_time_between(start_date="-2y", end_date="now")
-        channel = dirty_or_clean(random.choice(CHANNELS_CLEAN), CHANNELS_DIRTY)
+        order_date = fake.date_time_between(start_date=signup_dt, end_date="now")
+        channel_clean = random.choices(CHANNELS_CLEAN, weights=CHANNELS_WEIGHTS, k=1)[0]
+        channel = dirty_or_clean(channel_clean, CHANNELS_DIRTY)
         status = dirty_or_clean(random.choice(ORDER_STATUS_CLEAN), ORDER_STATUS_DIRTY)
         updated_at = order_date if maybe(0.8) else fake.date_time_between(start_date=order_date, end_date="now")
 
@@ -271,10 +272,9 @@ def generate_orders(n: int, customer_ids: list[int]) -> list[dict]:
                 "OrderDate": order_date.isoformat(sep=" "),
                 "Channel": channel,
                 "Status": status,
-                "TotalAmount": None,  # se calcula en generate_order_items()
+                "TotalAmount": None,
                 "CreatedAt": order_date.isoformat(sep=" "),
                 "UpdatedAt": updated_at.isoformat(sep=" "),
-                # campos internos usados solo para generacion, no se exportan a CSV:
                 "_order_date_dt": order_date,
             }
         )
@@ -291,27 +291,29 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
     max_product_id = max(product_ids)
     product_price_map = {p["ProductID"]: p["UnitPrice"] for p in products}
 
+    # Distribucion Pareto (Best Sellers)
+    product_weights = [1.0 / ((idx + 1) ** 0.8) for idx in range(len(product_ids))]
+
     item_id = 1
     for order in orders:
         n_items = random.randint(*ITEMS_PER_ORDER_RANGE)
-        chosen_products = random.sample(product_ids, min(n_items, len(product_ids)))
+        chosen_products = random.choices(product_ids, weights=product_weights, k=n_items)
+        chosen_products = list(set(chosen_products))
 
         for product_id in chosen_products:
             if maybe(P_ORPHAN_FK):
-                product_id_used = max_product_id + random.randint(1, 500)  # producto ya no existe
+                product_id_used = max_product_id + random.randint(1, 500)
                 unit_price = round(random.uniform(5, 500), 2)
             else:
                 product_id_used = product_id
                 base_price = product_price_map.get(product_id)
                 if base_price is None:
                     base_price = round(random.uniform(5, 500), 2)
-                # drift de precio historico: el precio al momento de la orden
-                # no siempre coincide con el precio actual del catalogo
                 unit_price = round(abs(base_price) * random.uniform(0.9, 1.1), 2)
 
             order_id_used = order["OrderID"]
             if maybe(P_ORPHAN_FK):
-                order_id_used = max_order_id + random.randint(1, 500)  # orden ya no existe
+                order_id_used = max_order_id + random.randint(1, 500)
 
             quantity = random.randint(1, 6)
             if maybe(P_ZERO_OR_NEG_QTY):
@@ -331,7 +333,6 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
                 order_totals[order_id_used] += quantity * unit_price
             item_id += 1
 
-    # Backfill de Orders.TotalAmount, con ruido intencional (no siempre cuadra)
     for order in orders:
         real_total = round(order_totals.get(order["OrderID"], 0.0), 2)
         if maybe(P_AMOUNT_MISMATCH):
@@ -352,9 +353,9 @@ def generate_payments(orders: list[dict]) -> list[dict]:
 
     for order in orders:
         if maybe(P_ORDER_WITHOUT_PAYMENT):
-            continue  # pedido sin pago registrado (pago pendiente / error de captura)
+            continue
 
-        n_payments = 2 if maybe(P_DUPLICATE_PAYMENT) else 1  # reintento de pago duplicado
+        n_payments = 2 if maybe(P_DUPLICATE_PAYMENT) else 1
 
         for _ in range(n_payments):
             order_id_used = order["OrderID"]
@@ -372,7 +373,6 @@ def generate_payments(orders: list[dict]) -> list[dict]:
             order_date_dt = order["_order_date_dt"]
             payment_date = order_date_dt + timedelta(minutes=random.randint(1, 120))
             created_at = payment_date
-            # el pago cambia de estado DESPUES de creado el pedido -> UpdatedAt > CreatedAt
             updated_at = created_at + timedelta(hours=random.randint(1, 72)) if maybe(0.4) else created_at
 
             rows.append(
@@ -407,7 +407,17 @@ def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
         priority = dirty_or_clean(random.choice(TICKET_PRIORITY_CLEAN), TICKET_PRIORITY_DIRTY)
 
         created_at = fake.date_time_between(start_date="-1y", end_date="now")
-        updated_at = created_at if maybe(0.5) else fake.date_time_between(start_date=created_at, end_date="now")
+        
+        # Resolucion realista en e-commerce (1 a 4 dias)
+        if status in ["Closed", "CLOSED", "closed"]:
+            hours_to_resolve = random.choices(
+                [random.randint(1, 12), random.randint(12, 48), random.randint(48, 96)],
+                weights=[0.50, 0.35, 0.15],
+                k=1
+            )[0]
+            updated_at = created_at + timedelta(hours=hours_to_resolve)
+        else:
+            updated_at = created_at + timedelta(hours=random.randint(1, 12))
 
         rows.append(
             {
@@ -432,90 +442,10 @@ def write_csv(rows: list[dict], filename: str, drop_cols: list[str] | None = Non
     if drop_cols:
         clean_rows = [{k: v for k, v in r.items() if k not in drop_cols} for r in rows]
     df = pl.DataFrame(clean_rows)
-    path = OUTPUT_DIR / filename
+    path = f"{OUTPUT_DIR}/{filename}"
     df.write_csv(path)
     print(f"  -> {filename}: {len(clean_rows)} filas")
     return path
-
-
-# ---------------------------------------------------------------------------
-# Carga a Azure SQL Database (pyodbc, fast_executemany, por lotes)
-# ---------------------------------------------------------------------------
-def load_to_azure_sql(table_name: str, csv_path: Path, batch_size: int = 1000) -> None:
-    import pyodbc  # import diferido: solo se necesita si se va a cargar
-
-    conn_str = (
-        "DRIVER={ODBC Driver 18 for SQL Server};"
-        f"SERVER={os.environ['AZURE_SQL_SERVER']};"
-        f"DATABASE={os.environ['AZURE_SQL_DATABASE']};"
-        f"UID={os.environ['AZURE_SQL_USER']};"
-        f"PWD={os.environ['AZURE_SQL_PASSWORD']};"
-        "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
-    )
-
-    df = pl.read_csv(csv_path, try_parse_dates=True)
-    records = df.to_dicts()
-    if not records:
-        print(f"  -> {table_name}: sin filas, se omite carga")
-        return
-
-    cols = list(records[0].keys())
-    col_names = ", ".join(f"[{c}]" for c in cols)
-    placeholders = ", ".join(["?"] * len(cols))
-    insert_sql = f"INSERT INTO dbo.{table_name} ({col_names}) VALUES ({placeholders})"
-    values = [tuple(r[c] for c in cols) for r in records]
-
-    with pyodbc.connect(conn_str, autocommit=False) as conn:
-        cursor = conn.cursor()
-        cursor.fast_executemany = True
-        try:
-            cursor.execute(f"SET IDENTITY_INSERT dbo.{table_name} ON")
-            for start in range(0, len(values), batch_size):
-                cursor.executemany(insert_sql, values[start : start + batch_size])
-            conn.commit()
-        finally:
-            cursor.execute(f"SET IDENTITY_INSERT dbo.{table_name} OFF")
-            conn.commit()
-
-    print(f"  -> {table_name}: {len(values)} filas cargadas")
-
-
-# ---------------------------------------------------------------------------
-# Resumen de calidad de datos (para copiar/pegar en tu README)
-# ---------------------------------------------------------------------------
-def print_summary(customers, products, orders, order_items, payments, tickets) -> None:
-    customer_ids = {c["CustomerID"] for c in customers}
-    order_ids = {o["OrderID"] for o in orders}
-
-    n_null_email = sum(1 for c in customers if c["Email"] is None)
-    n_null_phone = sum(1 for c in customers if c["Phone"] is None)
-    n_dup_emails = len(customers) - len({c["Email"] for c in customers if c["Email"]})
-    n_orphan_orders = sum(1 for o in orders if o["CustomerID"] not in customer_ids)
-    n_negative_price = sum(1 for p in products if p["UnitPrice"] is not None and p["UnitPrice"] < 0)
-    n_null_price = sum(1 for p in products if p["UnitPrice"] is None)
-    n_orphan_items = sum(1 for oi in order_items if oi["OrderID"] not in order_ids)
-    n_bad_qty = sum(1 for oi in order_items if oi["Quantity"] <= 0)
-    n_orders_with_payment = len({p["OrderID"] for p in payments})
-    n_orders_without_payment = len(orders) - n_orders_with_payment
-    n_orphan_tickets = sum(1 for t in tickets if t["CustomerID"] not in customer_ids)
-
-    print("\n=== Resumen de calidad de datos inyectada (copialo a tu README) ===")
-    print(f"Customers totales:                {len(customers)}")
-    print(f"  Email nulo:                     {n_null_email} ({n_null_email/len(customers):.1%})")
-    print(f"  Email duplicado:                {n_dup_emails} ({n_dup_emails/len(customers):.1%})")
-    print(f"  Phone nulo:                     {n_null_phone} ({n_null_phone/len(customers):.1%})")
-    print(f"Products totales:                 {len(products)}")
-    print(f"  UnitPrice negativo:             {n_negative_price}")
-    print(f"  UnitPrice nulo:                 {n_null_price}")
-    print(f"Orders totales:                   {len(orders)}")
-    print(f"  CustomerID huerfano:            {n_orphan_orders} ({n_orphan_orders/len(orders):.1%})")
-    print(f"  Sin Payment asociado:           {n_orders_without_payment} ({n_orders_without_payment/len(orders):.1%})")
-    print(f"OrderItems totales:                {len(order_items)}")
-    print(f"  OrderID huerfano:               {n_orphan_items}")
-    print(f"  Quantity <= 0:                  {n_bad_qty}")
-    print(f"SupportTickets totales:           {len(tickets)}")
-    print(f"  CustomerID huerfano:            {n_orphan_tickets}")
-    print("=====================================================================\n")
 
 
 # ---------------------------------------------------------------------------
@@ -534,44 +464,20 @@ def main() -> None:
     print("Generando datos sinteticos...")
     customers = generate_customers(N_CUSTOMERS)
     products = generate_products(N_PRODUCTS)
-    orders = generate_orders(N_ORDERS, [c["CustomerID"] for c in customers])
-    order_items = generate_order_items(orders, products)  # tambien backfillea Orders.TotalAmount
+    orders = generate_orders(N_ORDERS, customers)
+    order_items = generate_order_items(orders, products)
     payments = generate_payments(orders)
     tickets = generate_support_tickets(N_SUPPORT_TICKETS, [c["CustomerID"] for c in customers])
 
     print("\nEscribiendo CSVs...")
-    files = {
-        "Customers": write_csv(customers, "customers.csv"),
-        "Products": write_csv(products, "products.csv"),
-        "Orders": write_csv(orders, "orders.csv", drop_cols=["_order_date_dt"]),
-        "OrderItems": write_csv(order_items, "order_items.csv"),
-        "Payments": write_csv(payments, "payments.csv"),
-        "SupportTickets": write_csv(tickets, "support_tickets.csv"),
-    }
+    write_csv(customers, "customers.csv", drop_cols=["_signup_dt"])
+    write_csv(products, "products.csv")
+    write_csv(orders, "orders.csv", drop_cols=["_order_date_dt"])
+    write_csv(order_items, "order_items.csv")
+    write_csv(payments, "payments.csv")
+    write_csv(tickets, "support_tickets.csv")
 
-    print_summary(customers, products, orders, order_items, payments, tickets)
-
-    if args.no_load:
-        print("--no-load activo: CSVs generados, no se cargo nada a Azure SQL.")
-        return
-
-    required_env = ["AZURE_SQL_SERVER", "AZURE_SQL_DATABASE", "AZURE_SQL_USER", "AZURE_SQL_PASSWORD"]
-    missing = [v for v in required_env if not os.environ.get(v)]
-    if missing:
-        print(f"Faltan variables de entorno para conectar a Azure SQL: {missing}")
-        print("Crea un archivo .env (ver docstring de este script) o corre con --no-load.")
-        sys.exit(1)
-
-    print("Cargando a Azure SQL Database...")
-    # El orden no es estrictamente necesario (las FKs estan en NOCHECK), pero se
-    # mantiene el orden logico por legibilidad del log de carga.
-    load_to_azure_sql("Customers", files["Customers"])
-    load_to_azure_sql("Products", files["Products"])
-    load_to_azure_sql("Orders", files["Orders"])
-    load_to_azure_sql("OrderItems", files["OrderItems"])
-    load_to_azure_sql("Payments", files["Payments"])
-    load_to_azure_sql("SupportTickets", files["SupportTickets"])
-    print("\nCarga completa.")
+    print("\n¡CSVs regenerados exitosamente!")
 
 
 if __name__ == "__main__":
