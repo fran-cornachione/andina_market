@@ -7,13 +7,14 @@ PATH = "/Volumes/andina_source/landing/files/csv"
 def ingest_csv(file_name):
     return (
         spark.readStream
-            .format("cloudFiles")
+            .format("cloudFiles") # Auto Loader
             .option("cloudFiles.format", "csv")
-            .option("cloudFiles.inferColumnTypes", "true")
+            .option("cloudFiles.inferColumnTypes", "true") # Infiere tipos de datos automáticamente
             .option("header", "true")
             .option("pathGlobFilter", file_name)
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns") # Schema Evolution
             .load(PATH)
-            .withColumn("_ingested_at", F.current_timestamp()) # Columna con timestamp de procesamiento
+            .withColumn("_ingested_at", F.current_timestamp()) # Columna con timestamp de ingesta
     )
 
 @dp.table
