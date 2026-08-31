@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import polars as pl
-from dotenv import load_dotenv
 from faker import Faker
 
 # ---------------------------------------------------------------------------
@@ -462,7 +461,6 @@ def main() -> None:
 
     random.seed(args.seed)
     Faker.seed(args.seed)
-    load_dotenv()
 
     print("Generando datos sinteticos...")
     customers = generate_customers(N_CUSTOMERS)
