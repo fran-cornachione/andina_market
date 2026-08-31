@@ -7,12 +7,9 @@ desplegado como **Databricks Automation Bundle**.
 
 ## Nivel alcanzado
 
-- [x] **Nivel 1 — Ingesta ☑**
-- [x] **Nivel 2 — Transformación y modelado ☑**
-- [x] **Nivel 3 — Gold / Modelado + visualización ☑**
-- [ ] Nivel 4 — Feature Store
-- [ ] Nivel 5 — Capa RAG
-- [ ] Nivel 6 — Agentes GenAI
+- [x] **Nivel 1 — Ingesta**
+- [x] **Nivel 2 — Transformación y modelado**
+- [x] **Nivel 3 — Gold / Modelado + visualización**
 
 ---
 
@@ -132,7 +129,7 @@ arquitectura "correcta" fue diseñada y no reemplazada por desconocimiento.
    default no justificable.
 
 2. **Deduplicar solo por PK** (`ROW_NUMBER() OVER (PARTITION BY <PK> ORDER BY
-   _ingested_at DESC)`), nunca por atributos de negocio como email — email
+   _ingested_at DESC)`), nunca por atributos de negocio como email. email
    duplicado es una señal de calidad de datos, no evidencia de que dos
    `CustomerID` sean la misma persona.
 
@@ -155,10 +152,11 @@ arquitectura "correcta" fue diseñada y no reemplazada por desconocimiento.
 
 ## 5. Nivel 3 — Gold + visualización
 
+![](docs/dashboard/dashboard.png)
+
 ### 5.1 Modelo dimensional (star schema)
 
-Construido con notebook (PySpark/Spark SQL), no un script SQL plano — el
-notebook vive en `andina_market_bundle/src/`.
+Construido con Spark SQL en Lakeflow Declarative Pipelines (`03_gold.py`).
 
 | Tabla | Tipo | Notas |
 |---|---|---|
@@ -210,6 +208,8 @@ dentro del Job de Databricks que orquesta todo el pipeline
 
 ![](docs/job_succeded.png)
 
+Refresh automático del dashboard mediante un job.
+
 ![](docs/refresh_dashboard.png)
 
 ---
@@ -245,19 +245,20 @@ databricks configure --host <tu-workspace-url>
 # o, si usas OAuth: databricks auth login --host <tu-workspace-url>
 
 # 2. Desde andina_market_bundle/, validar que el bundle esté bien formado
+
 cd "andina_market_bundle"
+
 databricks bundle validate
 
 # 3. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
 databricks bundle deploy -t dev
 
-# 4. Correr el script crear_catalogos_y_tablas.sql
+# 4. Ejecutar el script crear_catalogos_y_tablas.sql desde el SQL editor o en un Notebook.
 
-# 4. Generar los datos sintéticos (landing zone) -- una sola vez, o cuando
-#    quieras refrescar el dataset base
-python ../reto/data_generator.py
+# 5. Generar los datos sintéticos (landing zone) -- una sola vez, o cuando quieras refrescar el dataset base
+python data_generator.py
 
-# 5. Correr el pipeline completo (Bronze -> Silver -> Gold)
+# 6. Correr el pipeline completo (Bronze -> Silver -> Gold)
 databricks bundle run andina_market_job
 ```
 
