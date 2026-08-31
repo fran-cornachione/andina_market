@@ -3,14 +3,12 @@ pipeline_type: WORKSPACE
 name: andina_market_etl
 libraries:
   - glob:
-      include: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market
-        (bundle)/src/andina_market_etl/transformations/**
-schema: default
+      include: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market_bundle/src/andina_market_etl/transformations/**
+schema: bronze
 continuous: false
 development: false
 photon: true
 channel: CURRENT
 catalog: andina_market
 serverless: true
-root_path: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market
-  (bundle)/src/andina_market_etl
+root_path: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market_bundle/src/andina_market_etl
