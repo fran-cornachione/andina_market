@@ -23,7 +23,7 @@ app móvil, sin implementarlo.
 
 ## Arquitectura propuesta
 
-![](/Workspace/Users/cornachofrance@gmail.com/andina_market/docs/streaming_design/streaming_architecture.png)
+![](docs/streaming_design/streaming_architecture.png)
 
 ### Consumo directo con Structured Streaming (sin paso intermedio por archivos)
 

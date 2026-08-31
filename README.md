@@ -22,11 +22,11 @@ desplegado como **Databricks Automation Bundle**.
 
 **Resumen:**
 
-![](/Workspace/Users/cornachofrance@gmail.com/andina_market/docs/architecture_diagram.png)
+![](docs/architecture_diagram.png)
 
 **Por qué esta arquitectura:**
 
-![](/Workspace/Users/cornachofrance@gmail.com/andina_market/docs/etl_succeded.png)
+![](docs/etl_succeded.png)
 
 - **Medallion (Bronze/Silver/Gold)** porque separa claramente "dato crudo tal
   como llegó" (auditable, reprocesable) de "dato validado" de "dato modelado
@@ -210,9 +210,9 @@ dashboard.
 Programado como tarea
 dentro del Job de Databricks que orquesta todo el pipeline
 
-![](/Workspace/Users/cornachofrance@gmail.com/andina_market/docs/job_succeded.png)
+![](docs/job_succeded.png)
 
-![](/Workspace/Users/cornachofrance@gmail.com/andina_market/docs/refresh_dashboard.png)
+![](docs/refresh_dashboard.png)
 
 ---
 
