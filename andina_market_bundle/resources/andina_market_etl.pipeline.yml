@@ -1,14 +1,20 @@
-id: ca6a4a56-57f9-47a9-adc1-c509e249719c
-pipeline_type: WORKSPACE
-name: andina_market_etl
-libraries:
-  - glob:
-      include: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market_bundle/src/andina_market_etl/transformations/**
-schema: bronze
-continuous: false
-development: false
-photon: true
-channel: CURRENT
-catalog: andina_market
-serverless: true
-root_path: /Workspace/Users/cornachofrance@gmail.com/andina_market/andina_market_bundle/src/andina_market_etl
+resources:
+  pipelines:
+    andina_market_etl:
+      id: ca6a4a56-57f9-47a9-adc1-c509e249719c
+      name: andina_market_etl
+      
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      
+      libraries:
+        - glob:
+            include: ../src/andina_market_etl/transformations/**
+      
+      root_path: ../src/andina_market_etl
+      
+      serverless: true
+      continuous: false
+      development: true
+      photon: true
+      channel: CURRENT

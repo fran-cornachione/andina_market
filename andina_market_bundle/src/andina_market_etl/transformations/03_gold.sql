@@ -15,6 +15,32 @@ STORED AS SCD TYPE 2;
 
 
 -------------------------------------------------------------------------------
+-- 1b. dim_customer_current -- una sola fila por cliente (version vigente)
+-------------------------------------------------------------------------------
+-- dim_customer tiene MULTIPLES filas por CustomerID (una por version
+-- historica) -- eso rompe una relacion 1:muchos limpia en Power BI, que
+-- necesita una llave unica del lado "1". Esta vista expone solo la version
+-- vigente (__END_AT IS NULL), una fila por cliente. USAR ESTA para la
+-- relacion del modelo semantico en Power BI, no dim_customer directo.
+-- dim_customer (arriba) sigue siendo la fuente de verdad historica, usada
+-- por fact_orders para atribuir cada pedido al cliente tal como era en
+-- ese momento (ver mas abajo).
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.dim_customer_current
+  COMMENT "Una fila por cliente -- la version vigente. Usar para relaciones en Power BI."
+AS SELECT
+  CustomerID,
+  FullName,
+  Email,
+  Phone,
+  City,
+  Country,
+  Segment,
+  SignupDate
+FROM andina_market.gold.dim_customer
+WHERE __END_AT IS NULL;
+
+
+-------------------------------------------------------------------------------
 -- 2. DIMENSIÓN PRODUCTOS (SCD TIPO 1 / MATERIALIZED VIEW)
 -------------------------------------------------------------------------------
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.dim_product
@@ -58,6 +84,13 @@ FROM date_range;
 -------------------------------------------------------------------------------
 -- 4. TABLA DE HECHOS: ÓRDENES E ÍTEMS (FACT_ORDERS)
 -------------------------------------------------------------------------------
+-- Se agrega un LEFT JOIN temporal contra dim_customer (la historica, no
+-- dim_customer_current) para traer el Segmento/Ciudad/Pais que el cliente
+-- TENIA al momento del pedido -- es lo que hace que el SCD2 realmente se
+-- use en algun lado, no solo exista en Gold sin conectarse a nada.
+-- Es LEFT JOIN (no INNER) porque la integridad referencial ya se garantizo
+-- en Silver -- si por algun caso limite no hay match, se prefiere conservar
+-- la fila del pedido con estos 3 campos en NULL antes que perderla.
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.fact_orders
   COMMENT "Tabla de hechos consolidada de pedidos e ítems a nivel de detalle"
 AS SELECT
@@ -73,10 +106,17 @@ AS SELECT
   oi.UnitPrice,
   (oi.Quantity * oi.UnitPrice) AS LineTotalAmount,
   o.TotalAmount AS OrderTotalAmount,
-  o.CreatedAt
+  o.CreatedAt,
+  dc.Segment AS CustomerSegmentAtOrderTime,
+  dc.City AS CustomerCityAtOrderTime,
+  dc.Country AS CustomerCountryAtOrderTime
 FROM andina_market.silver.orders o
 INNER JOIN andina_market.silver.order_items oi
-  ON o.OrderID = oi.OrderID;
+  ON o.OrderID = oi.OrderID
+LEFT JOIN andina_market.gold.dim_customer dc
+  ON o.CustomerID = dc.CustomerID
+ AND CAST(o.OrderDate AS DATE) >= dc.__START_AT
+ AND (dc.__END_AT IS NULL OR CAST(o.OrderDate AS DATE) < dc.__END_AT);
 
 
 -------------------------------------------------------------------------------
