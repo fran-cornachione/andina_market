@@ -240,25 +240,30 @@ instalado (`databricks -v` para confirmar), y acceso a un workspace de
 Databricks (Free Edition sirve).
 
 ```bash
+# 0. Clonar el repositorio y entrar a la carpeta principal
+git clone https://github.com/fran-cornachione/andina_market.git
+cd andina_market
+
 # 1. Autenticarte contra tu workspace
 databricks configure --host <tu-workspace-url>
-# o, si usas OAuth: databricks auth login --host <tu-workspace-url>
+# O usando OAuth:
+# databricks auth login --host <tu-workspace-url>
 
-# 2. Desde andina_market_bundle/, validar que el bundle esté bien formado
-
-cd "andina_market_bundle"
-
+# 2. Posicionarte en la carpeta del Bundle y validar la sintaxis
+cd andina_market_bundle
 databricks bundle validate
 
-# 3. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
+# 3. Desplegar los recursos al workspace (Job, Pipeline, notebooks, etc.)
 databricks bundle deploy -t dev
 
-# 4. Ejecutar el script crear_catalogos_y_tablas.sql desde el SQL editor o en un Notebook.
+# 4. (Manual) Ejecutar crear_catalogos_y_tablas.sql desde el Databricks SQL Editor o en un Notebook.
 
-# 5. Generar los datos sintéticos (landing zone) -- una sola vez, o cuando quieras refrescar el dataset base
+# 5. Generar los datos sintéticos (vuelve a subir una carpeta o asegúrate de que la ruta a data_generator.py sea correcta)
+cd ..
 python data_generator.py
 
-# 6. Correr el pipeline completo (Bronze -> Silver -> Gold)
+# 6. Correr el pipeline/job desplegado
+cd andina_market_bundle
 databricks bundle run andina_market_job
 ```
 
