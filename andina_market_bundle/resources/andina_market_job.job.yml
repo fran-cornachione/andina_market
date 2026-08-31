@@ -52,6 +52,10 @@ resources:
                 catalog: andina_market
                 schema: gold
                 storage_mode: DIRECT_QUERY
+              - name: dim_customer_current
+                catalog: andina_market
+                schema: gold
+                storage_mode: DIRECT_QUERY
             warehouse_id: f55c1d5853ef79e0
             power_bi_model:
               workspace_name: andina_market
