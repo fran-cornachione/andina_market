@@ -19,10 +19,7 @@ SELECT
     CASE
         WHEN Phone IS NULL OR TRIM(Phone) = '' THEN NULL
         WHEN LENGTH(REGEXP_REPLACE(Phone, '[^0-9]', '')) < 7 THEN NULL
-        WHEN TRIM(Phone) LIKE '+%' THEN 
-            CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
-        ELSE 
-            CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
+        ELSE CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
     END AS Phone,
 
     City,
@@ -62,7 +59,7 @@ WITH deduped AS (
         *,
         ROW_NUMBER() OVER (
             PARTITION BY ProductID
-            ORDER BY _ingested_at DESC
+            ORDER BY _ingested_at DESC, UpdatedAt DESC
         ) AS row_num
     FROM andina_market.bronze.products
     WHERE ProductID IS NOT NULL
@@ -150,7 +147,13 @@ SELECT
     c._processed_at
 FROM cleaned c
 -- Solo se conservan órdenes cuyo CustomerID existe en silver.customers ya limpio
-INNER JOIN andina_market.silver.customers cust
+-- Se deduplica customers para evitar fan-out: la streaming table puede tener
+-- multiples versiones del mismo cliente y un JOIN directo multiplicaria las ordenes
+INNER JOIN (
+    SELECT CustomerID
+    FROM andina_market.silver.customers
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY CustomerID ORDER BY _ingested_at DESC) = 1
+) cust
     ON c.CustomerID = cust.CustomerID;
 
 -- Order Items
@@ -297,5 +300,11 @@ SELECT
     CURRENT_TIMESTAMP() AS _processed_at
 FROM cleaned c
 -- Retiene únicamente aquellos tickets cuyo CustomerID exista en la tabla silver.customers
-INNER JOIN andina_market.silver.customers cust
+-- Se deduplica customers para evitar fan-out: la streaming table puede tener
+-- multiples versiones del mismo cliente y un JOIN directo multiplicaria los tickets
+INNER JOIN (
+    SELECT CustomerID
+    FROM andina_market.silver.customers
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY CustomerID ORDER BY _ingested_at DESC) = 1
+) cust
     ON c.CustomerID = cust.CustomerID;
