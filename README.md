@@ -293,8 +293,7 @@ para conectar Power BI como se describe en la sección 5.2.
 ## 9. Desafíos técnicos y decisiones de alcance
 
 
-- **Conectividad a Azure SQL bloqueada** en Databricks Free Edition (tanto
-  JDBC como un intento con la extensión `mssql` de DuckDB) — resuelto con el
+- **Conectividad a Azure SQL bloqueada** en Databricks Free Edition. Resuelto con el
   patrón de landing CSV descrito en la sección 2.
 
 - **Nivel 5 (RAG) se intentó pero no se completó**: se avanzó con chunking,
