@@ -1,7 +1,6 @@
 resources:
   pipelines:
     andina_market_etl:
-      id: ca6a4a56-57f9-47a9-adc1-c509e249719c
       name: andina_market_etl
       
       catalog: ${var.catalog}
