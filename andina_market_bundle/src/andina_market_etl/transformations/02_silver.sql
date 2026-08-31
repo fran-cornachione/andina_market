@@ -23,7 +23,13 @@ cleaned AS (
         CustomerID,
         INITCAP(TRIM(FullName)) AS FullName, -- Normalización de nombres
         NULLIF(LOWER(TRIM(Email)), '') AS Email, -- Si el email está vacío devuelve NULL
-        Phone,
+        -- Normalización de teléfonos: quita espacios/guiones, preserva + inicial, valida longitud
+        CASE
+            WHEN Phone IS NULL THEN NULL
+            WHEN REGEXP_REPLACE(Phone, '[^0-9+]', '') = '' THEN NULL -- Si no quedan dígitos
+            WHEN LENGTH(REGEXP_REPLACE(REGEXP_REPLACE(Phone, '[^0-9]', ''), '^0+', '')) < 7 THEN NULL -- Menos de 7 dígitos
+            ELSE REGEXP_REPLACE(Phone, '[^0-9+]', '') -- Mantiene solo dígitos y +
+        END AS Phone,
         City,
         CASE
             WHEN UPPER(TRIM(Country)) IN ('PE', 'PERU')       THEN 'Peru'
