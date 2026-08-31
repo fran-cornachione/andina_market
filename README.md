@@ -125,7 +125,7 @@ arquitectura "correcta" fue diseñada y no reemplazada por desconocimiento.
 ## 4. Nivel 2 — Transformación y modelado (Silver)
 
 **Patrón aplicado a las 6 tablas** (ver el archivo de Silver en
-`andina_market (bundle)/src/andina_market_etl`):
+`andina_market_bundle/src/andina_market_etl`):
 
 1. **Estandarizar categóricos**: cada campo de texto libre (`Channel`,
    `Status`, `PaymentMethod`, `Segment`, `Priority`, `Country`, etc.) se
@@ -160,7 +160,7 @@ arquitectura "correcta" fue diseñada y no reemplazada por desconocimiento.
 ### 5.1 Modelo dimensional (star schema)
 
 Construido con notebook (PySpark/Spark SQL), no un script SQL plano — el
-notebook vive en `andina_market (bundle)/src/`.
+notebook vive en `andina_market_bundle/src/`.
 
 | Tabla | Tipo | Notas |
 |---|---|---|
@@ -220,7 +220,7 @@ dentro del Job de Databricks que orquesta todo el pipeline
 
 ```
 andina_market/
-├── andina_market (bundle)/       Databricks Asset Bundle
+├── andina_market_bundle       Databricks Asset Bundle
 │   ├── resources/                 Definición del Job y Pipeline (YAML)
 │   ├── src/                       Notebooks: ingesta Bronze, transformación
 │   │                              Silver, modelado Gold
@@ -246,8 +246,8 @@ Databricks (Free Edition sirve).
 databricks configure --host <tu-workspace-url>
 # o, si usas OAuth: databricks auth login --host <tu-workspace-url>
 
-# 2. Desde andina_market (bundle)/, validar que el bundle esté bien formado
-cd "andina_market (bundle)"
+# 2. Desde andina_market_bundle/, validar que el bundle esté bien formado
+cd "andina_market_bundle"
 databricks bundle validate
 
 # 3. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
