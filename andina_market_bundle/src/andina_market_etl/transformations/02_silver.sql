@@ -1,4 +1,8 @@
--- Streaming Table sin deduplicación explícita
+-- CURRENT_TIMESTAMP AS _processed_at: Columna con timestamp de procesamiento
+-- deduped: CTE para deduplicar
+-- cleaned: CTE para limpiar datos, selecciona desde deduped
+
+-- Streaming Table en vez de Materialized View para SCD (sin deduplicación explícita)
 -- AUTO CDC en gold.dim_customer manejará duplicados con SEQUENCE BY UpdatedAt
 
 CREATE OR REFRESH STREAMING TABLE andina_market.silver.customers 
