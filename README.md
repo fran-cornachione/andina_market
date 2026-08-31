@@ -253,6 +253,8 @@ databricks bundle validate
 # 3. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
 databricks bundle deploy -t dev
 
+# 4. Correr el script crear_catalogos_y_tablas.sql
+
 # 4. Generar los datos sintéticos (landing zone) -- una sola vez, o cuando
 #    quieras refrescar el dataset base
 python ../reto/data_generator.py
