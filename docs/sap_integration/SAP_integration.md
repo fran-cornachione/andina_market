@@ -1,6 +1,6 @@
 ### Ingesta desde SAP On-Premise (Propuesta de Arquitectura)
 
-![](docs/sap_integration/SAP_architecture.png)
+![](SAP_architecture.png)
 
 Para el escenario donde la fuente de datos proviene de un sistema **SAP On-Premise** (como SAP ECC o S/4HANA), la ingesta no se realiza consultando directamente la base de datos transaccional para no afectar su rendimiento.
 

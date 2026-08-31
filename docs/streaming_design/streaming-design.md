@@ -23,7 +23,7 @@ app móvil, sin implementarlo.
 
 ## Arquitectura propuesta
 
-![](docs/streaming_design/streaming_architecture.png)
+![](streaming_architecture.png)
 
 ### Consumo directo con Structured Streaming (sin paso intermedio por archivos)
 
