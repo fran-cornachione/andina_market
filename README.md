@@ -20,8 +20,6 @@ desplegado como **Databricks Automation Bundle**.
 
 **Diagrama:** ver `docs/architecture-diagram.png`.
 
-**Resumen:**
-
 ![](docs/architecture_diagram.png)
 
 **Por qué esta arquitectura:**
