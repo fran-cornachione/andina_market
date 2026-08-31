@@ -9,7 +9,8 @@ CREATE FLOW dim_customer_scd2_flow AS
 AUTO CDC INTO andina_market.gold.dim_customer
 FROM STREAM(andina_market.silver.customers)
 KEYS (CustomerID)
-SEQUENCE BY UpdatedAt
+SEQUENCE BY UpdatedAt -- Columna de timestamp usada para ordenar los eventos y resolver qué cambio ocurrió primero
+COLUMNS * EXCEPT (_processed_at, _ingested_at)
 STORED AS SCD TYPE 2;
 
 
