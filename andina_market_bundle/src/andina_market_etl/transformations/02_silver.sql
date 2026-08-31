@@ -3,32 +3,24 @@
 
 CREATE OR REFRESH STREAMING TABLE andina_market.silver.customers 
 (
-    -- Registra el número de filas descartadas (métrica observable)
     CONSTRAINT valid_customer_id EXPECT (CustomerID IS NOT NULL) ON VIOLATION DROP ROW,
     CONSTRAINT valid_email_format EXPECT (Email IS NULL OR Email LIKE '%@%.%')
 )
 AS
 SELECT
     CustomerID,
-    INITCAP(TRIM(FullName)) AS FullName, -- Normalización de nombres
-    NULLIF(LOWER(TRIM(Email)), '') AS Email, -- Si el email está vacío devuelve NULL
+    INITCAP(TRIM(FullName)) AS FullName,
+    NULLIF(LOWER(TRIM(Email)), '') AS Email,
     
-    -- Normalización de teléfonos: quita espacios/guiones, preserva + inicial, valida longitud
     CASE
-    -- 1. Si es NULL o espacios vacíos -> NULL
-    WHEN Phone IS NULL OR TRIM(Phone) = '' THEN NULL
-    
-    -- 2. Si al quitar todo lo no numérico quedan menos de 7 dígitos -> NULL
-    WHEN LENGTH(REGEXP_REPLACE(Phone, '[^0-9]', '')) < 7 THEN NULL
-    
-    -- 3. Si ya empieza con '+', limpiamos todo lo que no sea número después del '+'
-    WHEN TRIM(Phone) LIKE '+%' THEN 
-        CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
-        
-    -- 4. Si no tiene '+', se lo anteponemos a los dígitos limpios
-    ELSE 
-        CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
-END AS Phone,
+        WHEN Phone IS NULL OR TRIM(Phone) = '' THEN NULL
+        WHEN LENGTH(REGEXP_REPLACE(Phone, '[^0-9]', '')) < 7 THEN NULL
+        WHEN TRIM(Phone) LIKE '+%' THEN 
+            CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
+        ELSE 
+            CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
+    END AS Phone,
+
     City,
     CASE
         WHEN UPPER(TRIM(Country)) IN ('PE', 'PERU')       THEN 'Peru'
@@ -43,15 +35,14 @@ END AS Phone,
         WHEN UPPER(TRIM(Segment)) = 'REGULAR' THEN 'Regular'
         WHEN UPPER(TRIM(Segment)) = 'VIP'     THEN 'VIP'
         WHEN UPPER(TRIM(Segment)) = 'PREMIUM' THEN 'Premium'
-        ELSE NULL   -- valor inesperado no mapeado -> se trata como desconocido, no se inventa
+        ELSE NULL
     END AS Segment,
     SignupDate,
     CreatedAt,
     UpdatedAt,
     _ingested_at,
     CURRENT_TIMESTAMP() AS _processed_at
-FROM STREAM(andina_market.bronze.customers)
-WHERE CustomerID IS NOT NULL;
+FROM STREAM(andina_market.bronze.customers);
 
 --  Products
 

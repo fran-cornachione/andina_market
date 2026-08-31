@@ -10,7 +10,6 @@ AUTO CDC INTO andina_market.gold.dim_customer
 FROM STREAM(andina_market.silver.customers)
 KEYS (CustomerID)
 SEQUENCE BY UpdatedAt
-COLUMNS * EXCEPT (_ingested_at)
 STORED AS SCD TYPE 2;
 
 
