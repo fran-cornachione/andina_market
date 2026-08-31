@@ -240,29 +240,33 @@ instalado (`databricks -v` para confirmar), y acceso a un workspace de
 Databricks (Free Edition sirve).
 
 ```bash
-# 0. Clonar el repositorio y entrar a la carpeta principal
+# 0. Clonar el repositorio y entrar al proyecto
 git clone https://github.com/fran-cornachione/andina_market.git
 cd andina_market
 
-# 1. Autenticarte contra tu workspace
+# 1. Instalar dependencias necesarias para los scripts
+pip install -r reto/scripts/requirements.txt
+
+# 2. Autenticarte contra tu workspace de Databricks
 databricks configure --host <tu-workspace-url>
 # O usando OAuth:
 # databricks auth login --host <tu-workspace-url>
 
-# 2. Posicionarte en la carpeta del Bundle y validar la sintaxis
+# 3. Validar el Databricks Asset Bundle
 cd andina_market_bundle
 databricks bundle validate
 
-# 3. Desplegar los recursos al workspace (Job, Pipeline, notebooks, etc.)
+# 4. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
 databricks bundle deploy -t dev
 
-# 4. (Manual) Ejecutar crear_catalogos_y_tablas.sql desde el Databricks SQL Editor o en un Notebook.
+# 5. Ejecutar el script crear_catalogos_y_tablas.sql desde el SQL editor o en un Notebook.
 
-# 5. Generar los datos sintéticos (vuelve a subir una carpeta o asegúrate de que la ruta a data_generator.py sea correcta)
+# 6. Generar los datos sintéticos (landing zone)
+# Regresamos a la raíz para encontrar data_generator.py (o ajusta la ruta si está dentro de reto/scripts/)
 cd ..
 python data_generator.py
 
-# 6. Correr el pipeline/job desplegado
+# 7. Correr el pipeline completo (Bronze -> Silver -> Gold)
 cd andina_market_bundle
 databricks bundle run andina_market_job
 ```
