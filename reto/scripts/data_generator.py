@@ -1,7 +1,7 @@
 """
 data_generator.py
 ==================
-Genera datos sinteticos "sucios" (con errores realistas) para Andina Market.
+Genera datos sinteticos "sucios" (con errores realistas) para Andina Market. Correr como python data_generator.py
 """
 
 from __future__ import annotations
