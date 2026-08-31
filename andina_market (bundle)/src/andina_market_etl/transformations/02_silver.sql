@@ -1,7 +1,13 @@
 -- Deduped: CTE para deduplicar
 -- Cleaned: CTE que selecciona de Deduped y limpia los datos
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.customers AS
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.customers 
+(
+    -- Registra el número de filas descartadas (métrica observable)
+    CONSTRAINT valid_customer_id EXPECT (CustomerID IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_email_format EXPECT (Email IS NULL OR Email LIKE '%@%.%')
+)
+AS
 WITH deduped AS (
     SELECT
         *,
@@ -48,6 +54,10 @@ SELECT * FROM cleaned;
 
 CREATE OR REFRESH MATERIALIZED VIEW 
     andina_market.silver.products 
+(
+    CONSTRAINT valid_product_id EXPECT (ProductID IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT non_negative_price EXPECT (UnitPrice IS NULL OR UnitPrice >= 0)
+)
 AS
 WITH deduped AS (
     SELECT
@@ -86,7 +96,13 @@ SELECT * FROM cleaned;
 
 -- Orders
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.orders AS
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.orders 
+(
+    CONSTRAINT valid_order_id EXPECT (OrderID IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_customer_reference EXPECT (CustomerID IS NOT NULL),
+    CONSTRAINT non_negative_total EXPECT (TotalAmount IS NULL OR TotalAmount >= 0)
+)
+AS
 WITH deduped AS (
     SELECT
         *,
@@ -94,7 +110,7 @@ WITH deduped AS (
             PARTITION BY OrderID
             ORDER BY _ingested_at DESC
         ) AS row_num
-    FROM orders
+    FROM andina_market.bronze.orders
     WHERE OrderID IS NOT NULL
 ),
 cleaned AS (
@@ -139,7 +155,15 @@ FROM cleaned c
 INNER JOIN andina_market.silver.customers cust
     ON c.CustomerID = cust.CustomerID;
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.order_items AS
+-- Order Items
+
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.order_items 
+(
+    CONSTRAINT valid_order_item_id EXPECT (OrderItemID IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_quantity EXPECT (Quantity > 0) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_unit_price EXPECT (UnitPrice IS NULL OR UnitPrice > 0)
+)
+AS
 WITH deduped AS (
     SELECT
         *,
@@ -173,7 +197,12 @@ WHERE c.Quantity > 0;
 
 -- Payments
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.payments AS
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.payments 
+(
+    CONSTRAINT valid_payment_id EXPECT (PaymentID IS NOT NULL) ON VIOLATION DROP ROW,
+    CONSTRAINT valid_amount EXPECT (Amount IS NULL OR Amount >= 0)
+)
+AS
 WITH deduped AS (
     SELECT
         *,
@@ -227,7 +256,11 @@ INNER JOIN andina_market.silver.orders ord
 
 -- Support Tickets
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.support_tickets AS
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.support_tickets 
+(
+    CONSTRAINT valid_ticket_id EXPECT (TicketID IS NOT NULL) ON VIOLATION DROP ROW
+)
+AS
 WITH deduped AS (
     SELECT
         *,

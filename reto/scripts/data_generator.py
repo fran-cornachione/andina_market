@@ -22,6 +22,9 @@ from faker import Faker
 # ---------------------------------------------------------------------------
 OUTPUT_DIR = "/Volumes/andina_source/landing/files/csv"
 
+# Crear carpeta "csv" si no existe
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 N_CUSTOMERS = 600
 N_PRODUCTS = 180
 N_ORDERS = 2500
