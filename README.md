@@ -264,6 +264,8 @@ databricks bundle deploy -t dev
 # 6. Generar los datos sintéticos (landing zone)
 # Regresamos a la raíz para encontrar data_generator.py (o ajusta la ruta si está dentro de reto/scripts/)
 cd ..
+cd reto
+cd scripts
 python data_generator.py
 
 # 7. Correr el pipeline completo (Bronze -> Silver -> Gold)
