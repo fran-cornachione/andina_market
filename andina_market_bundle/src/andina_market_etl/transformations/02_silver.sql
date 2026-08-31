@@ -1,60 +1,47 @@
--- Deduped: CTE para deduplicar
--- Cleaned: CTE que selecciona de Deduped y limpia los datos
+-- Streaming Table sin deduplicación explícita
+-- AUTO CDC en gold.dim_customer manejará duplicados con SEQUENCE BY UpdatedAt
 
-CREATE OR REFRESH MATERIALIZED VIEW andina_market.silver.customers 
+CREATE OR REFRESH STREAMING TABLE andina_market.silver.customers 
 (
     -- Registra el número de filas descartadas (métrica observable)
     CONSTRAINT valid_customer_id EXPECT (CustomerID IS NOT NULL) ON VIOLATION DROP ROW,
     CONSTRAINT valid_email_format EXPECT (Email IS NULL OR Email LIKE '%@%.%')
 )
 AS
-WITH deduped AS (
-    SELECT
-        *,
-        ROW_NUMBER() OVER (
-            PARTITION BY CustomerID -- Deduplicación por 
-            ORDER BY _ingested_at DESC -- Orden por tiempo de ingesta
-        ) AS row_num
-    FROM andina_market.bronze.customers
-    WHERE CustomerID IS NOT NULL -- Filtrar por CustomerID no nulo
-),
-cleaned AS (
-    SELECT
-        CustomerID,
-        INITCAP(TRIM(FullName)) AS FullName, -- Normalización de nombres
-        NULLIF(LOWER(TRIM(Email)), '') AS Email, -- Si el email está vacío devuelve NULL
-        -- Normalización de teléfonos: quita espacios/guiones, preserva + inicial, valida longitud
-        CASE
-            WHEN Phone IS NULL THEN NULL
-            WHEN REGEXP_REPLACE(Phone, '[^0-9+]', '') = '' THEN NULL -- Si no quedan dígitos
-            WHEN LENGTH(REGEXP_REPLACE(REGEXP_REPLACE(Phone, '[^0-9]', ''), '^0+', '')) < 7 THEN NULL -- Menos de 7 dígitos
-            ELSE REGEXP_REPLACE(Phone, '[^0-9+]', '') -- Mantiene solo dígitos y +
-        END AS Phone,
-        City,
-        CASE
-            WHEN UPPER(TRIM(Country)) IN ('PE', 'PERU')       THEN 'Peru'
-            WHEN UPPER(TRIM(Country)) IN ('CO', 'COLOMBIA')   THEN 'Colombia'
-            WHEN UPPER(TRIM(Country)) IN ('MX', 'MEXICO')     THEN 'Mexico'
-            WHEN UPPER(TRIM(Country)) IN ('CL', 'CHILE')      THEN 'Chile'
-            WHEN UPPER(TRIM(Country)) IN ('AR', 'ARGENTINA')  THEN 'Argentina'
-            WHEN Country IS NULL                              THEN NULL
-            ELSE INITCAP(TRIM(Country))
-        END AS Country,
-        CASE
-            WHEN UPPER(TRIM(Segment)) = 'REGULAR' THEN 'Regular'
-            WHEN UPPER(TRIM(Segment)) = 'VIP'     THEN 'VIP'
-            WHEN UPPER(TRIM(Segment)) = 'PREMIUM' THEN 'Premium'
-            ELSE NULL   -- valor inesperado no mapeado -> se trata como desconocido, no se inventa
-        END AS Segment,
-        SignupDate,
-        CreatedAt,
-        UpdatedAt,
-        _ingested_at,
-        CURRENT_TIMESTAMP() AS _processed_at
-    FROM deduped
-    WHERE row_num = 1
-)
-SELECT * FROM cleaned;
+SELECT
+    CustomerID,
+    INITCAP(TRIM(FullName)) AS FullName, -- Normalización de nombres
+    NULLIF(LOWER(TRIM(Email)), '') AS Email, -- Si el email está vacío devuelve NULL
+    -- Normalización de teléfonos: quita espacios/guiones, preserva + inicial, valida longitud
+    CASE
+        WHEN Phone IS NULL THEN NULL
+        WHEN REGEXP_REPLACE(Phone, '[^0-9+]', '') = '' THEN NULL -- Si no quedan dígitos
+        WHEN LENGTH(REGEXP_REPLACE(REGEXP_REPLACE(Phone, '[^0-9]', ''), '^0+', '')) < 7 THEN NULL -- Menos de 7 dígitos
+        ELSE REGEXP_REPLACE(Phone, '[^0-9+]', '') -- Mantiene solo dígitos y +
+    END AS Phone,
+    City,
+    CASE
+        WHEN UPPER(TRIM(Country)) IN ('PE', 'PERU')       THEN 'Peru'
+        WHEN UPPER(TRIM(Country)) IN ('CO', 'COLOMBIA')   THEN 'Colombia'
+        WHEN UPPER(TRIM(Country)) IN ('MX', 'MEXICO')     THEN 'Mexico'
+        WHEN UPPER(TRIM(Country)) IN ('CL', 'CHILE')      THEN 'Chile'
+        WHEN UPPER(TRIM(Country)) IN ('AR', 'ARGENTINA')  THEN 'Argentina'
+        WHEN Country IS NULL                              THEN NULL
+        ELSE INITCAP(TRIM(Country))
+    END AS Country,
+    CASE
+        WHEN UPPER(TRIM(Segment)) = 'REGULAR' THEN 'Regular'
+        WHEN UPPER(TRIM(Segment)) = 'VIP'     THEN 'VIP'
+        WHEN UPPER(TRIM(Segment)) = 'PREMIUM' THEN 'Premium'
+        ELSE NULL   -- valor inesperado no mapeado -> se trata como desconocido, no se inventa
+    END AS Segment,
+    SignupDate,
+    CreatedAt,
+    UpdatedAt,
+    _ingested_at,
+    CURRENT_TIMESTAMP() AS _processed_at
+FROM STREAM(andina_market.bronze.customers)
+WHERE CustomerID IS NOT NULL;
 
 --  Products
 
