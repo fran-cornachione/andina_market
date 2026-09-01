@@ -62,7 +62,7 @@ resources:
               model_name: andina_market_semantic_model
               storage_mode: DIRECT_QUERY
               authentication_method: PAT
-              overwrite_existing: false
+              overwrite_existing: true
             connection_resource_name: andina_market_powerbi
             refresh_after_update: true
       queue:
