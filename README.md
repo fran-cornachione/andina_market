@@ -240,39 +240,36 @@ instalado (`databricks -v` para confirmar), y acceso a un workspace de
 Databricks (Free Edition sirve).
 
 ```bash
-# 0. Clonar el repositorio y entrar al proyecto
-git clone https://github.com/fran-cornachione/andina_market.git
-cd andina_market
+# 0. En Databricks Free Edition, crea un Git Folder a partir de este repositorio.
+https://github.com/fran-cornachione/andina_market.git
 
 # 1. Instalar dependencias necesarias para los scripts
-pip install -r reto/scripts/requirements.txt
+cd reto
+cd scripts
+pip install -r requirements.txt
 
-# 2. Autenticarte contra tu workspace de Databricks
-databricks configure --host <tu-workspace-url>
-# O usando OAuth:
-# databricks auth login --host <tu-workspace-url>
+# 2. Ejecutar el script crear_catalogos_y_tablas.sql desde el SQL editor o en un Notebook.
 
-# 3. Validar el Databricks Asset Bundle
-cd andina_market_bundle
-databricks bundle validate
+# 3. Generar los datos sintéticos (landing zone)
 
-# 4. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
-databricks bundle deploy -t dev
-
-# 5. Ejecutar el script crear_catalogos_y_tablas.sql desde el SQL editor o en un Notebook.
-
-# 6. Generar los datos sintéticos (landing zone)
 # Regresamos a la raíz para encontrar data_generator.py (o ajusta la ruta si está dentro de reto/scripts/)
 cd ..
 cd reto
 cd scripts
 python data_generator.py
 
-!!IMPORTANTE!! data_generator.py funciona solo dentro de Databricks, ya que guarda los datos en un Volumen dentro de un catálogo.
+!!IMPORTANTE!! data_generator.py funciona solo dentro de Databricks, ya que escribe los archivos csv en un Volumen dentro de un catálogo.
 
-# 7. Correr el pipeline completo (Bronze -> Silver -> Gold)
+# 4. Desplegar los recursos (Job, Pipeline, notebooks) al workspace
+databricks bundle deploy -t dev | O, desde la UI, dentro del bundle, en el ícono del cohete, click en "Deploy"
+
+Nota: El Job andina_market_job.yml requiere una conexión previa hacia el workspace de Power BI (andina_market_powerbi). Puedes crearla en Unity Catalog o comentar la referencia dentro del archivo .yml del job si deseas desplegar únicamente el pipeline ETL.
+
+# 5. Correr el pipeline completo (Bronze -> Silver -> Gold) (Sin refresh en Power Bi)
 cd andina_market_bundle
-databricks bundle run andina_market_job
+databricks bundle run andina_market_pipeline
+
+(O, desde la UI, en Jobs & Pipelines)
 ```
 
 Una vez corrido, las tablas quedan disponibles en Unity Catalog bajo
