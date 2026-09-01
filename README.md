@@ -268,6 +268,8 @@ cd reto
 cd scripts
 python data_generator.py
 
+!!IMPORTANTE!! data_generator.py funciona solo dentro de Databricks, ya que guarda los datos en un Volumen dentro de un catálogo.
+
 # 7. Correr el pipeline completo (Bronze -> Silver -> Gold)
 cd andina_market_bundle
 databricks bundle run andina_market_job
