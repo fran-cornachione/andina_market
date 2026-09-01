@@ -21,44 +21,41 @@ resources:
             - task_key: run_etl_pipeline
           power_bi_task:
             tables:
-              - catalog: andina_market
-                schema: gold
-                storage_mode: DIRECT_QUERY
               - name: dim_customer
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: dim_customer_current
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: dim_date
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: dim_product
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: fact_orders
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: fact_payments
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
               - name: fact_support_tickets
                 catalog: andina_market
                 schema: gold
-                storage_mode: DIRECT_QUERY
+                storage_mode: IMPORT
             warehouse_id: f55c1d5853ef79e0
             power_bi_model:
               workspace_name: andina_market
               model_name: andina_market_semantic_model
-              storage_mode: DIRECT_QUERY
+              storage_mode: IMPORT
               authentication_method: PAT
-              overwrite_existing: true
+              overwrite_existing: false
             connection_resource_name: andina_market_powerbi
             refresh_after_update: true
       queue:
