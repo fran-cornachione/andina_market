@@ -1,4 +1,3 @@
--- CURRENT_TIMESTAMP AS _processed_at: Columna con timestamp de procesamiento
 -- deduped: CTE para deduplicar
 -- cleaned: CTE para limpiar datos, selecciona desde deduped
 
@@ -123,6 +122,7 @@ cleaned AS (
         o.CustomerID,
         o.OrderDate,
         CASE
+            -- Reemplazar guiónes por espacios simples, eliminar espacios al inicio y final, y normalizar / capitalizar
             WHEN UPPER(TRIM(REPLACE(o.Channel, '_', ' '))) = 'WEB' THEN 'Web'
             WHEN UPPER(TRIM(REPLACE(o.Channel, '_', ' '))) = 'APP' THEN 'App'
             WHEN UPPER(TRIM(REPLACE(o.Channel, '_', ' '))) IN ('TIENDA', 'TIENDA FISICA') THEN 'Tienda'
@@ -159,9 +159,8 @@ FROM cleaned c
 -- Se deduplica customers para evitar fan-out: la streaming table puede tener
 -- multiples versiones del mismo cliente y un JOIN directo multiplicaria las ordenes
 INNER JOIN (
-    SELECT CustomerID
+    SELECT DISTINCT CustomerID
     FROM andina_market.silver.customers
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY CustomerID ORDER BY _ingested_at DESC) = 1
 ) cust
     ON c.CustomerID = cust.CustomerID;
 
@@ -312,8 +311,7 @@ FROM cleaned c
 -- Se deduplica customers para evitar fan-out: la streaming table puede tener
 -- multiples versiones del mismo cliente y un JOIN directo multiplicaria los tickets
 INNER JOIN (
-    SELECT CustomerID
+    SELECT DISTINCT CustomerID
     FROM andina_market.silver.customers
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY CustomerID ORDER BY _ingested_at DESC) = 1
 ) cust
     ON c.CustomerID = cust.CustomerID;

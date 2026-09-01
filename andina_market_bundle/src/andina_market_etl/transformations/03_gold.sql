@@ -1,4 +1,5 @@
 -- 1. DIMENSIÓN CLIENTES (SCD TIPO 2 - HISTORIAL DE CAMBIOS)
+-- Se usa una Streaming Table en vez de una MV, ya que las Materialized Views sobrescriben datos, por lo tanto no nos permiten mantener un historial
 -------------------------------------------------------------------------------
 CREATE OR REFRESH STREAMING TABLE andina_market.gold.dim_customer
   COMMENT "Dimensión de clientes con historial de cambios (SCD Type 2) en Segmento, Ciudad y País";
@@ -6,8 +7,8 @@ CREATE OR REFRESH STREAMING TABLE andina_market.gold.dim_customer
 CREATE FLOW dim_customer_scd2_flow AS
 AUTO CDC INTO andina_market.gold.dim_customer
 FROM STREAM(andina_market.silver.customers)
-KEYS (CustomerID)
-SEQUENCE BY UpdatedAt
+KEYS (CustomerID) -- Usa CustomerID para saber qué fila actualizar
+SEQUENCE BY UpdatedAt -- Usa UpdatedAt para saber el orden de los cambios
 COLUMNS * EXCEPT (_processed_at, _ingested_at)
 STORED AS SCD TYPE 2;
 
@@ -54,6 +55,7 @@ FROM andina_market.silver.products;
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.dim_date
   COMMENT "Tabla de dimensión de fechas para análisis temporal"
 AS
+-- Genera un rango de fechas desde 2020-01-01 hasta 2030-12-31 (una fila por día)
 WITH date_range AS (
   SELECT explode(sequence(to_date('2020-01-01'), to_date('2030-12-31'), interval 1 day)) AS Date
 )
@@ -86,7 +88,7 @@ AS SELECT
   o.Channel,
   o.Status AS OrderStatus,
   oi.Quantity,
-  oi.UnitPrice AS HistoricalUnitPrice,
+  oi.UnitPrice AS HistoricalUnitPrice, -- Guardar el precio al que se vendió, por si el día de mañana cambia (no usar UnitPrice desde dim_product)
   (oi.Quantity * oi.UnitPrice) AS LineTotalAmount,
   o.TotalAmount AS OrderTotalAmount,
   o.CreatedAt
@@ -127,8 +129,8 @@ AS SELECT
   Status AS TicketStatus,
   Priority,
   CASE 
-    WHEN UpdatedAt IS NOT NULL AND Status IN ('Closed', 'Resolved') 
-    THEN ROUND(CAST((unix_timestamp(UpdatedAt) - unix_timestamp(CreatedAt)) AS DOUBLE) / 86400.0, 2)
+  -- Tiempo promedio de resolución en días
+    WHEN UpdatedAt IS NOT NULL AND Status IN ('Closed', 'Resolved') THEN ROUND(CAST((unix_timestamp(UpdatedAt) - unix_timestamp(CreatedAt)) AS DOUBLE) / 86400.0, 2)
     ELSE NULL 
   END AS ResolutionTimeDays
 FROM andina_market.silver.support_tickets;
