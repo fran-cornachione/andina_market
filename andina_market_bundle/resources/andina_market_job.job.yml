@@ -15,7 +15,7 @@ resources:
       tasks:
         - task_key: run_etl_pipeline
           pipeline_task:
-            pipeline_id: ca6a4a56-57f9-47a9-adc1-c509e249719c
+            pipeline_id: ${resources.pipelines.andina_market_etl.id}
         - task_key: refresh_powerbi_dashboard
           depends_on:
             - task_key: run_etl_pipeline
