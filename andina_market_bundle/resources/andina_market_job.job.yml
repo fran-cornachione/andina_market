@@ -28,15 +28,15 @@ resources:
                 catalog: andina_market
                 schema: gold
                 storage_mode: DIRECT_QUERY
+              - name: dim_customer_current
+                catalog: andina_market
+                schema: gold
+                storage_mode: DIRECT_QUERY
               - name: dim_date
                 catalog: andina_market
                 schema: gold
                 storage_mode: DIRECT_QUERY
               - name: dim_product
-                catalog: andina_market
-                schema: gold
-                storage_mode: DIRECT_QUERY
-              - name: fact_order_items
                 catalog: andina_market
                 schema: gold
                 storage_mode: DIRECT_QUERY
@@ -49,10 +49,6 @@ resources:
                 schema: gold
                 storage_mode: DIRECT_QUERY
               - name: fact_support_tickets
-                catalog: andina_market
-                schema: gold
-                storage_mode: DIRECT_QUERY
-              - name: dim_customer_current
                 catalog: andina_market
                 schema: gold
                 storage_mode: DIRECT_QUERY
