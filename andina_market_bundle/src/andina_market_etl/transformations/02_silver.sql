@@ -17,10 +17,19 @@ SELECT
     NULLIF(LOWER(TRIM(Email)), '') AS Email,
     
     CASE
+  -- 1. Descartar nulos, vacíos o números con menos de 7 dígitos
         WHEN Phone IS NULL OR TRIM(Phone) = '' THEN NULL
         WHEN LENGTH(REGEXP_REPLACE(Phone, '[^0-9]', '')) < 7 THEN NULL
+
+        -- 2. Si ya empieza con '+', limpiamos espacios o guiones internos pero conservamos el '+'
+        WHEN TRIM(Phone) LIKE '+%' THEN CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
+
+        -- 3. Si empieza con '00' (prefijo internacional estándar), lo reemplazamos por '+'
+        WHEN TRIM(Phone) LIKE '00%' THEN CONCAT('+', REGEXP_REPLACE(SUBSTRING(TRIM(Phone), 3), '[^0-9]', ''))
+
+        -- 4. Si es un número sin prefijo (ej: 3113164752), agregamos un prefijo por defecto (ej: +54) o solo conservamos los dígitos
         ELSE CONCAT('+', REGEXP_REPLACE(Phone, '[^0-9]', ''))
-    END AS Phone,
+        END AS Phone,
 
     City,
     CASE
