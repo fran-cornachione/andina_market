@@ -5,8 +5,8 @@ CREATE OR REFRESH STREAMING TABLE andina_market.gold.dim_customer
   COMMENT "Dimensión de clientes con historial de cambios (SCD Type 2) en Segmento, Ciudad y País";
 
 CREATE FLOW dim_customer_scd2_flow AS
-AUTO CDC INTO andina_market.gold.dim_customer
-FROM STREAM(andina_market.silver.customers)
+AUTO CDC INTO andina_market.gold.dim_customer -- Target table
+FROM STREAM(andina_market.silver.customers) -- Stream de bronze (source table)
 KEYS (CustomerID) -- Usa CustomerID para saber qué fila actualizar
 SEQUENCE BY UpdatedAt -- Usa UpdatedAt para saber el orden de los cambios
 COLUMNS * EXCEPT (_processed_at, _ingested_at)
@@ -14,7 +14,7 @@ STORED AS SCD TYPE 2;
 
 
 -------------------------------------------------------------------------------
--- 1b. dim_customer_current (VERSIÓN VIGENTE PARA POWER BI)
+-- 1. dim_customer_current (VERSIÓN VIGENTE PARA POWER BI)
 -------------------------------------------------------------------------------
 CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.dim_customer_current
   COMMENT "Una fila por cliente (versión vigente). Usar para relaciones 1:N en Power BI."
@@ -28,7 +28,7 @@ AS SELECT
   Segment,
   SignupDate
 FROM andina_market.gold.dim_customer
-WHERE __END_AT IS NULL;
+WHERE __END_AT IS NULL; -- Solo registros activos
 
 
 -------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.fact_orders
   COMMENT "Tabla de hechos consolidada de pedidos e ítems a nivel de detalle"
 AS SELECT
   oi.OrderItemID,
-  o.OrderID,
+  o.OrderID, -- OrderID tendrá duplicados porque un pedido puede tener varios ítems, por eso es usamos OrderItemID como PK
   COALESCE(o.CustomerID, -1) AS CustomerID,
   oi.ProductID,
   COALESCE(CAST(date_format(o.OrderDate, 'yyyyMMdd') AS INT), -1) AS OrderDateSK,
@@ -89,7 +89,7 @@ AS SELECT
   o.Status AS OrderStatus,
   oi.Quantity,
   oi.UnitPrice AS HistoricalUnitPrice, -- Guardar el precio al que se vendió, por si el día de mañana cambia (no usar UnitPrice desde dim_product)
-  (oi.Quantity * oi.UnitPrice) AS LineTotalAmount,
+  ROUND((oi.Quantity * oi.UnitPrice), 2) AS LineTotalAmount,
   o.TotalAmount AS OrderTotalAmount,
   o.CreatedAt
 FROM andina_market.silver.orders o
@@ -129,7 +129,7 @@ AS SELECT
   Status AS TicketStatus,
   Priority,
   CASE 
-  -- Tiempo promedio de resolución en días
+  -- Tiempo de resolución en días
     WHEN UpdatedAt IS NOT NULL AND Status IN ('Closed', 'Resolved') THEN ROUND(CAST((unix_timestamp(UpdatedAt) - unix_timestamp(CreatedAt)) AS DOUBLE) / 86400.0, 2)
     ELSE NULL 
   END AS ResolutionTimeDays
