@@ -77,7 +77,16 @@ cleaned AS (
         ProductID,
         SKU,
         INITCAP(TRIM(ProductName)) AS ProductName,
-        INITCAP(TRIM(Category)) AS Category,
+        CASE 
+            WHEN LOWER(TRIM(Category)) IN ('deportes', 'deporte') THEN 'Deportes'
+            WHEN LOWER(TRIM(Category)) IN ('juguetes', 'juguete') THEN 'Juguetes'
+            WHEN LOWER(TRIM(Category)) IN ('electronica') THEN 'Electrónica'
+            WHEN LOWER(TRIM(Category)) IN ('hogar') THEN 'Hogar'
+            WHEN LOWER(TRIM(Category)) IN ('moda') THEN 'Moda'
+            WHEN LOWER(TRIM(Category)) IN ('belleza') THEN 'Belleza'
+            WHEN LOWER(TRIM(Category)) IN ('libros') THEN 'Libros'
+            ELSE INITCAP(TRIM(Category))
+        END AS Category,
         Description,
         -- Precio negativo es un error de captura sin forma de inferir el
         -- valor real -> se anula y se marca con flag en vez de adivinar
