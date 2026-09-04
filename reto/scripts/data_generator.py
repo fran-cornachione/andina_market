@@ -15,7 +15,6 @@ from pathlib import Path
 
 import polars as pl
 from faker import Faker
-
 # ---------------------------------------------------------------------------
 # Configuracion general
 # ---------------------------------------------------------------------------
@@ -29,7 +28,6 @@ N_PRODUCTS = 180
 N_ORDERS = 2500
 N_SUPPORT_TICKETS = 350
 ITEMS_PER_ORDER_RANGE = (1, 5)
-
 # Probabilidades de errores realistas inyectados
 P_NULL_EMAIL = 0.05
 P_NULL_PHONE = 0.10
@@ -43,7 +41,6 @@ P_ZERO_OR_NEG_QTY = 0.03
 P_AMOUNT_MISMATCH = 0.08
 P_ORDER_WITHOUT_PAYMENT = 0.06
 P_DUPLICATE_PAYMENT = 0.03
-
 COUNTRIES = {
     "Peru": ["Lima", "Arequipa", "Trujillo", "Cusco"],
     "Colombia": ["Bogota", "Medellin", "Cali", "Barranquilla"],
@@ -71,7 +68,6 @@ COUNTRY_DIRTY_VARIANTS = {
 SEGMENTS_CLEAN = ["Regular", "VIP", "Premium"]
 SEGMENTS_WEIGHTS = [0.65, 0.25, 0.10]
 SEGMENTS_DIRTY = ["regular", "vip", "PREMIUM", "Vip", "premium "]
-
 CHANNELS_CLEAN = ["Web", "App", "Tienda"]
 CHANNELS_WEIGHTS = [0.45, 0.32, 0.23]
 CHANNELS_DIRTY = ["web", "WEB", "app", "APP", "tienda", "TIENDA", "tienda_fisica"]
@@ -81,19 +77,15 @@ ORDER_STATUS_DIRTY = ["pending", "PENDING", "completed", "cancelled ", "CANCELLE
 
 PRODUCT_STATUS_CLEAN = ["Active", "Discontinued"]
 PRODUCT_STATUS_DIRTY = ["active", "ACTIVE", "discontinued", "DISC"]
-
 PAYMENT_METHODS_CLEAN = ["Credit Card", "Debit Card", "PayPal", "Cash"]
 PAYMENT_METHODS_DIRTY = ["credit_card", "Credit card", "paypal", "PAYPAL", "efectivo", "CASH"]
 
 PAYMENT_STATUS_CLEAN = ["Approved", "Pending", "Failed", "Refunded"]
 PAYMENT_STATUS_DIRTY = ["approved", "APPROVED", "pending ", "failed"]
-
 TICKET_STATUS_CLEAN = ["Open", "In Progress", "Closed"]
 TICKET_STATUS_DIRTY = ["open", "OPEN", "in_progress", "closed", "CLOSED"]
-
 TICKET_PRIORITY_CLEAN = ["Low", "Medium", "High"]
 TICKET_PRIORITY_DIRTY = ["low", "high", "URGENTE", "urgente", "Alta"]
-
 CATEGORIES = ["Electronica", "Hogar", "Moda", "Deportes", "Belleza", "Juguetes", "Libros"]
 CATEGORIES_DIRTY_MAP = {
     "Electronica": ["electronica", "ELECTRONICA", "Electronica "],
@@ -104,7 +96,6 @@ CATEGORIES_DIRTY_MAP = {
     "Juguetes": ["juguetes", "Juguete"],
     "Libros": ["libros", "LIBROS"],
 }
-
 REAL_PRODUCTS = {
     "Electronica": ["Smartphone Galaxy S23", "Audífonos Bluetooth Noise Cancelling", "Smart TV 55 QLED", "Laptop Pro 16", "Cargador Carga Rápida 65W", "Consola de Videojuegos Pro", "Monitor Gamer 27 144Hz"],
     "Hogar": ["Aspiradora Robot Wi-Fi", "Cafetera Espresso Automática", "Juego de Sartenes Antiadherentes", "Lámpara LED Inteligente", "Freidora de Aire 5L", "Edredón Plumas Matrimonial"],
@@ -114,7 +105,6 @@ REAL_PRODUCTS = {
     "Juguetes": ["Set de Bloques para Construcción", "Juego de Mesa Estrategia", "Muñeca Articulada", "Coche a Control Remoto All-Road"],
     "Libros": ["Hábitos Atómicos", "Cien Años de Soledad", "El Poder del Ahora", "Clean Code", "Sapiens: De animales a dioses"]
 }
-
 SUBJECT_TEMPLATES = [
     "Problema con mi pedido",
     "Consulta sobre devolucion",
@@ -125,8 +115,6 @@ SUBJECT_TEMPLATES = [
 ]
 
 fake = Faker(["es_MX", "es_CO", "es_ES", "es_AR", "es_CL"])
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -136,8 +124,6 @@ def maybe(prob: float) -> bool:
 
 def dirty_or_clean(clean_value: str, dirty_options: list[str], prob: float = P_MESSY_CASE) -> str:
     return random.choice(dirty_options) if maybe(prob) else clean_value
-
-
 # ---------------------------------------------------------------------------
 # Generadores por tabla
 # ---------------------------------------------------------------------------
@@ -151,7 +137,6 @@ def generate_customers(n: int) -> list[dict]:
         name = fake.name()
         if maybe(0.05):
             name = f"  {name.upper()}  "
-
         if seen_emails and maybe(P_DUPLICATE_EMAIL):
             email = random.choice(seen_emails)
             if maybe(0.5):
@@ -161,14 +146,12 @@ def generate_customers(n: int) -> list[dict]:
         seen_emails.append(email)
         if maybe(P_NULL_EMAIL):
             email = None
-
         phone_formats = [
             fake.phone_number(),
             f"+{random.randint(1, 99)} {fake.msisdn()[:9]}",
             fake.numerify("#########"),
         ]
         phone = random.choice(phone_formats) if not maybe(P_NULL_PHONE) else None
-
         country_clean = random.choices(
             list(COUNTRY_WEIGHTS.keys()), weights=list(COUNTRY_WEIGHTS.values()), k=1
         )[0]
@@ -177,15 +160,33 @@ def generate_customers(n: int) -> list[dict]:
         if maybe(P_NULL_COUNTRY):
             country = None
 
-        segment_clean = random.choices(SEGMENTS_CLEAN, weights=SEGMENTS_WEIGHTS, k=1)[0]
+        signup_year = random.choices(
+            [2020, 2021, 2022, 2023, 2024, 2025],
+            weights=[0.08, 0.10, 0.13, 0.17, 0.23, 0.29],
+            k=1,
+        )[0]
+        year_start = datetime(signup_year, 1, 1)
+        year_end = datetime(signup_year, 12, 31, 23, 59, 59)
+        signup_date = fake.date_time_between(start_date=year_start, end_date=year_end)
+
+        if signup_year == 2020:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.72, 0.22, 0.06], k=1)[0]
+        elif signup_year == 2021:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.68, 0.25, 0.07], k=1)[0]
+        elif signup_year == 2022:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.63, 0.28, 0.09], k=1)[0]
+        elif signup_year == 2023:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.58, 0.30, 0.12], k=1)[0]
+        elif signup_year == 2024:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.52, 0.32, 0.16], k=1)[0]
+        else:
+            segment_clean = random.choices(SEGMENTS_CLEAN, weights=[0.46, 0.34, 0.20], k=1)[0]
         segment = dirty_or_clean(segment_clean, SEGMENTS_DIRTY)
         if maybe(0.05):
             segment = None
 
-        signup_date = fake.date_time_between(start_date=signup_start, end_date=signup_end)
         created_at = signup_date
         updated_at = created_at if maybe(0.7) else fake.date_time_between(start_date=created_at, end_date=signup_end)
-
         rows.append(
             {
                 "CustomerID": i,
@@ -203,23 +204,38 @@ def generate_customers(n: int) -> list[dict]:
         )
     return rows
 
-
 def generate_products(n: int) -> list[dict]:
     rows = []
     skus_used: list[str] = []
 
     for i in range(1, n + 1):
-        category = random.choice(CATEGORIES)
+        category = random.choices(
+            CATEGORIES,
+            weights=[0.22, 0.17, 0.18, 0.12, 0.11, 0.10, 0.10],
+            k=1,
+        )[0]
         category_val = dirty_or_clean(category, CATEGORIES_DIRTY_MAP[category])
-        
+
         base_name = random.choice(REAL_PRODUCTS[category])
         name = f"{base_name} - Mod. {i:03d}" if maybe(0.2) else base_name
-
         sku_clean = f"SKU-{category[:3].upper()}-{i:05d}"
         sku = random.choice(skus_used) if skus_used and maybe(0.03) else sku_clean
         skus_used.append(sku_clean)
 
-        price = round(random.uniform(5, 500), 2)
+        if category == "Electronica":
+            price = round(random.triangular(25, 1800, 350), 2)
+        elif category == "Hogar":
+            price = round(random.triangular(15, 900, 180), 2)
+        elif category == "Moda":
+            price = round(random.triangular(10, 600, 90), 2)
+        elif category == "Deportes":
+            price = round(random.triangular(12, 1200, 150), 2)
+        elif category == "Belleza":
+            price = round(random.triangular(8, 450, 65), 2)
+        elif category == "Juguetes":
+            price = round(random.triangular(8, 350, 55), 2)
+        else:
+            price = round(random.triangular(5, 180, 25), 2)
         if maybe(P_NEGATIVE_PRICE):
             price = -price
         if maybe(P_NULL_PRICE):
@@ -227,10 +243,8 @@ def generate_products(n: int) -> list[dict]:
 
         status = dirty_or_clean(random.choice(PRODUCT_STATUS_CLEAN), PRODUCT_STATUS_DIRTY)
         description = fake.paragraph(nb_sentences=4)
-
         created_at = fake.date_time_between(start_date="-3y", end_date="-6M")
         updated_at = created_at if maybe(0.6) else fake.date_time_between(start_date=created_at, end_date="now")
-
         rows.append(
             {
                 "ProductID": i,
@@ -246,13 +260,11 @@ def generate_products(n: int) -> list[dict]:
         )
     return rows
 
-
 def generate_orders(n: int, customers: list[dict]) -> list[dict]:
     rows = []
     customer_ids = [c["CustomerID"] for c in customers]
     max_customer_id = max(customer_ids)
     customer_map = {c["CustomerID"]: c["_signup_dt"] for c in customers}
-
     for i in range(1, n + 1):
         if maybe(P_ORPHAN_FK):
             customer_id = max_customer_id + random.randint(1, 500)
@@ -260,13 +272,11 @@ def generate_orders(n: int, customers: list[dict]) -> list[dict]:
         else:
             customer_id = random.choice(customer_ids)
             signup_dt = customer_map[customer_id]
-
         order_date = fake.date_time_between(start_date=signup_dt, end_date="now")
         channel_clean = random.choices(CHANNELS_CLEAN, weights=CHANNELS_WEIGHTS, k=1)[0]
         channel = dirty_or_clean(channel_clean, CHANNELS_DIRTY)
         status = dirty_or_clean(random.choice(ORDER_STATUS_CLEAN), ORDER_STATUS_DIRTY)
         updated_at = order_date if maybe(0.8) else fake.date_time_between(start_date=order_date, end_date="now")
-
         rows.append(
             {
                 "OrderID": i,
@@ -282,7 +292,6 @@ def generate_orders(n: int, customers: list[dict]) -> list[dict]:
         )
     return rows
 
-
 def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]:
     rows = []
     order_totals = {o["OrderID"]: 0.0 for o in orders}
@@ -292,16 +301,42 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
     product_ids = [p["ProductID"] for p in products]
     max_product_id = max(product_ids)
     product_price_map = {p["ProductID"]: p["UnitPrice"] for p in products}
-
     # Distribucion Pareto (Best Sellers)
     product_weights = [1.0 / ((idx + 1) ** 0.8) for idx in range(len(product_ids))]
 
     item_id = 1
     for order in orders:
-        n_items = random.randint(*ITEMS_PER_ORDER_RANGE)
-        chosen_products = random.choices(product_ids, weights=product_weights, k=n_items)
-        chosen_products = list(set(chosen_products))
+        order_year = order["_order_date_dt"].year
+        if order_year == 2020:
+            category_weights = [0.14, 0.19, 0.22, 0.12, 0.11, 0.09, 0.13]
+        elif order_year == 2021:
+            category_weights = [0.16, 0.19, 0.20, 0.12, 0.11, 0.09, 0.13]
+        elif order_year == 2022:
+            category_weights = [0.19, 0.18, 0.18, 0.12, 0.12, 0.09, 0.12]
+        elif order_year == 2023:
+            category_weights = [0.23, 0.17, 0.16, 0.12, 0.12, 0.08, 0.12]
+        elif order_year == 2024:
+            category_weights = [0.27, 0.15, 0.14, 0.12, 0.13, 0.08, 0.11]
+        else:
+            category_weights = [0.31, 0.14, 0.13, 0.12, 0.13, 0.07, 0.10]
 
+        n_items = random.choices([1, 2, 3, 4, 5], weights=[0.32, 0.30, 0.20, 0.12, 0.06], k=1)[0]
+        chosen_products = []
+        for _ in range(n_items):
+            category = random.choices(CATEGORIES, weights=category_weights, k=1)[0]
+            category_product_ids = [
+                product_id for product_id in product_ids
+                if products[product_id - 1]["Category"] in [category] or
+                products[product_id - 1]["Category"] in CATEGORIES_DIRTY_MAP[category]
+            ]
+            if category_product_ids:
+                category_weights_products = [
+                    product_weights[product_id - 1] for product_id in category_product_ids
+                ]
+                chosen_products.append(
+                    random.choices(category_product_ids, weights=category_weights_products, k=1)[0]
+                )
+        chosen_products = list(dict.fromkeys(chosen_products))
         for product_id in chosen_products:
             if maybe(P_ORPHAN_FK):
                 product_id_used = max_product_id + random.randint(1, 500)
@@ -311,16 +346,23 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
                 base_price = product_price_map.get(product_id)
                 if base_price is None:
                     base_price = round(random.uniform(5, 500), 2)
-                unit_price = round(abs(base_price) * random.uniform(0.9, 1.1), 2)
-
+                inflation = {
+                    2020: 0.82,
+                    2021: 0.87,
+                    2022: 0.94,
+                    2023: 1.00,
+                    2024: 1.10,
+                    2025: 1.22,
+                    2026: 1.30,
+                }.get(order_year, 1.30)
+                unit_price = round(abs(base_price) * inflation * random.uniform(0.90, 1.10), 2)
             order_id_used = order["OrderID"]
             if maybe(P_ORPHAN_FK):
                 order_id_used = max_order_id + random.randint(1, 500)
 
-            quantity = random.randint(1, 6)
+            quantity = random.choices([1, 2, 3, 4, 5, 6], weights=[0.48, 0.25, 0.12, 0.07, 0.05, 0.03], k=1)[0]
             if maybe(P_ZERO_OR_NEG_QTY):
                 quantity = random.choice([0, -1, -2])
-
             rows.append(
                 {
                     "OrderItemID": item_id,
@@ -334,7 +376,6 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
             if order_id_used in order_totals:
                 order_totals[order_id_used] += quantity * unit_price
             item_id += 1
-
     for order in orders:
         real_total = round(order_totals.get(order["OrderID"], 0.0), 2)
         if maybe(P_AMOUNT_MISMATCH):
@@ -345,7 +386,6 @@ def generate_order_items(orders: list[dict], products: list[dict]) -> list[dict]
             order["TotalAmount"] = real_total
 
     return rows
-
 
 def generate_payments(orders: list[dict]) -> list[dict]:
     rows = []
@@ -363,7 +403,6 @@ def generate_payments(orders: list[dict]) -> list[dict]:
             order_id_used = order["OrderID"]
             if maybe(P_ORPHAN_FK):
                 order_id_used = max_order_id + random.randint(1, 500)
-
             base_amount = order["TotalAmount"] if order["TotalAmount"] is not None else round(random.uniform(10, 500), 2)
             amount = base_amount
             if maybe(P_AMOUNT_MISMATCH) and base_amount:
@@ -371,12 +410,10 @@ def generate_payments(orders: list[dict]) -> list[dict]:
 
             method = dirty_or_clean(random.choice(PAYMENT_METHODS_CLEAN), PAYMENT_METHODS_DIRTY)
             status = dirty_or_clean(random.choice(PAYMENT_STATUS_CLEAN), PAYMENT_STATUS_DIRTY)
-
             order_date_dt = order["_order_date_dt"]
             payment_date = order_date_dt + timedelta(minutes=random.randint(1, 120))
             created_at = payment_date
             updated_at = created_at + timedelta(hours=random.randint(1, 72)) if maybe(0.4) else created_at
-
             rows.append(
                 {
                     "PaymentID": payment_id,
@@ -392,7 +429,6 @@ def generate_payments(orders: list[dict]) -> list[dict]:
             payment_id += 1
     return rows
 
-
 def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
     rows = []
     max_customer_id = max(customer_ids)
@@ -402,14 +438,12 @@ def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
             customer_id = max_customer_id + random.randint(1, 500)
         else:
             customer_id = random.choice(customer_ids)
-
         subject = random.choice(SUBJECT_TEMPLATES)
         body = fake.paragraph(nb_sentences=6)
         status = dirty_or_clean(random.choice(TICKET_STATUS_CLEAN), TICKET_STATUS_DIRTY)
         priority = dirty_or_clean(random.choice(TICKET_PRIORITY_CLEAN), TICKET_PRIORITY_DIRTY)
-
         created_at = fake.date_time_between(start_date="-1y", end_date="now")
-        
+
         # Resolucion realista en e-commerce (1 a 4 dias)
         if status in ["Closed", "CLOSED", "closed"]:
             hours_to_resolve = random.choices(
@@ -420,7 +454,6 @@ def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
             updated_at = created_at + timedelta(hours=hours_to_resolve)
         else:
             updated_at = created_at + timedelta(hours=random.randint(1, 12))
-
         rows.append(
             {
                 "TicketID": i,
@@ -434,8 +467,6 @@ def generate_support_tickets(n: int, customer_ids: list[int]) -> list[dict]:
             }
         )
     return rows
-
-
 # ---------------------------------------------------------------------------
 # Escritura de CSVs (Polars)
 # ---------------------------------------------------------------------------
@@ -448,8 +479,6 @@ def write_csv(rows: list[dict], filename: str, drop_cols: list[str] | None = Non
     df.write_csv(path)
     print(f"  -> {filename}: {len(clean_rows)} filas")
     return path
-
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -458,7 +487,6 @@ def main() -> None:
     parser.add_argument("--no-load", action="store_true", help="Solo generar CSVs, no cargar a Azure SQL")
     parser.add_argument("--seed", type=int, default=42, help="Semilla para reproducibilidad")
     args = parser.parse_args()
-
     random.seed(args.seed)
     Faker.seed(args.seed)
 
@@ -469,7 +497,6 @@ def main() -> None:
     order_items = generate_order_items(orders, products)
     payments = generate_payments(orders)
     tickets = generate_support_tickets(N_SUPPORT_TICKETS, [c["CustomerID"] for c in customers])
-
     print("\nEscribiendo CSVs...")
     write_csv(customers, "customers.csv", drop_cols=["_signup_dt"])
     write_csv(products, "products.csv")
