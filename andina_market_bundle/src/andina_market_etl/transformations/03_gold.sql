@@ -134,3 +134,35 @@ AS SELECT
     ELSE NULL 
   END AS ResolutionTimeDays
 FROM andina_market.silver.support_tickets;
+
+-------------------------------------------------------------------------------
+-- 7. VISTA MATERIALIZADA: CAMBIOS DE SEGMENTO DE CLIENTES
+-------------------------------------------------------------------------------
+CREATE OR REFRESH MATERIALIZED VIEW andina_market.gold.customer_segment_changes
+  COMMENT "Historial de cambios de segmento por cliente (para análisis de migración)"
+AS
+WITH customer_changes AS (
+    SELECT 
+        CustomerID,
+        FullName,
+        Segment AS LastSegment,
+        LEAD(Segment) OVER (PARTITION BY CustomerID ORDER BY __START_AT) AS NewSegment,
+        __START_AT AS StartDate,
+        __END_AT AS EndDate,
+        LEAD(__START_AT) OVER (PARTITION BY CustomerID ORDER BY __START_AT) AS ChangeDate
+    FROM 
+        andina_market.gold.dim_customer
+)
+SELECT 
+    CustomerID,
+    FullName,
+    LastSegment,
+    NewSegment,
+    StartDate,
+    EndDate,
+    ChangeDate
+FROM 
+    customer_changes
+WHERE 
+    NewSegment IS NOT NULL 
+    AND LastSegment != NewSegment;

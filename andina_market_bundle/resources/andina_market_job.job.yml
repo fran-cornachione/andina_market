@@ -49,6 +49,10 @@ resources:
                 catalog: andina_market
                 schema: gold
                 storage_mode: IMPORT
+              - name: customer_segment_changes
+                catalog: andina_market
+                schema: gold
+                storage_mode: IMPORT
             warehouse_id: f55c1d5853ef79e0
             power_bi_model:
               workspace_name: andina_market
